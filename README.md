@@ -1,6 +1,6 @@
 # Life Index | 人生索引
 
-<div align="right">
+<div align="center">
 
 [English](./README.en.md) | **简体中文**
 
