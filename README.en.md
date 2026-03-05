@@ -12,8 +12,8 @@
   <img src="https://img.shields.io/badge/Interaction-Natural_Language-ffe66d" alt="Natural Language">
 </p>
 
-> **Not a knowledge base. A personal chronicle.**  
-> **Optimized not for productivity, but for retrieving life's fragments.**
+> **Not a knowledge base. Not an Agent memory cache. A personal chronicle.**  
+> **Optimized not for knowledge retention, not for AI performance, but for retrieving life's fragments.**
 
 ---
 
@@ -21,19 +21,78 @@
 
 This is my first GitHub repository.
 
-I didn't create this to show off my coding skills. I created it to build a <u>**Personal Life Archive**</u> for myself — a place to keep my own life fragments, including that bittersweet ache when I stumble upon photos of my daughter at age two.    
-> I want to remember not just how she grew, but how I felt. The weight of her small body in my arms. The moment she ran to the balcony, opened my cigarette pack, and handed me one with her clumsy little hands — not knowing what it was, just imitating the one she loved most.    
-> And if possible, I hope to pass this <u>**record of my whole life**</u> down to her one day. Long after I'm gone, she can open it like a faded, yellowed book — recalling her father's love in every line, and perhaps finding a bit of his hard-won wisdom to guide her.
+I'm just a regular father with zero coding background — I couldn't even write this README without AI assistance. I didn't create this to flex technical skills. I built it because I desperately needed a **tool specifically for storing life fragments** —
 
-**🎯 I believe that ——**    
+> **Not a Personal Knowledge Management system, not an Agent memory cache, but a personal life archive.**  
+> **Not for knowledge retention, not for AI performance optimization, but for retrieving my own life fragments.**
+
+---
+
+## ⚠️ Key Distinction: What Life Index Is and Is Not
+
+Three major approaches dominate personal data management today, but Life Index differs fundamentally from all of them:
+
+| Dimension | **Life Index**<br>(Personal Chronicle) | **Traditional PKM**<br>(Notion/Obsidian) | **Agent Memory Systems**<br>(Mem0/Zep) |
+|:---:|:---:|:---:|:---:|
+| **Core Logic** | **Time + Topic**<br>(When + What) | **Topic + Links**<br>(What + How it connects) | **Timely + Evolving**<br>(Now + Keep updating) |
+| **Data Structure** | Chronological archive, traceable to "this day three years ago" | Knowledge graph, emphasizing conceptual connections | Context-window optimized, emphasizing current relevance |
+| **Data Lifespan** | **Permanent retention**<br>(Readable 20 years later) | Long-term retention, but subject to reconstruction as knowledge updates | **Temporary/Evolutionary retention**<br>(Old memories compressed or forgotten) |
+| **Serves** | **Humans**<br>(Preserving life slices for you) | **Humans**<br>(Managing knowledge assets for you) | **Agents**<br>(Improving AI task performance) |
+| **Storage Location** | **User device folder**<br>(e.g., `~/Documents/Life-Index`)<br>📁 Physically isolated from Agent | Local or cloud (user's choice) | **Agent config directory**<br>(e.g., `AppData/Roaming/Agent`)<br>🤖 Serving AI performance |
+| **Typical Use** | Recording "the sun was perfect that day when my 2-year-old sang a song" | Organizing "7 core concepts of compound interest investing" | Remembering "user ordered pizza yesterday, no cheese" |
+
+**Key Insight:**
+
+- **PKM** answers **"What do I know?"** (Knowledge dimension)
+- **Agent Memory** answers **"What did I just say?"** (Context dimension)  
+- **Life Index** answers **"What was I feeling then?"** (Space-time dimension)
+
+**The Critical Difference: Agent Memory Is Consumable, Life Index Is Legacy**
+
+Agent memory systems exist to help AI **serve you better** (remembering your preferences, habits, recent instructions). Data lives in the Agent's config directory, constantly **overwritten, compressed, forgotten** as you interact with AI — like human short-term memory, where old details dilute in the face of new information.
+
+Life Index exists to help you **preserve yourself** (recording your feelings, decisions, life slices). Data lives in **your own folder**, physically isolated from the Agent, **permanently retained** — like a letter to the future, its words still clear when opened 20 years later.
+
+---
+
+## 🛠️ Core Engines
+
+### 【Record Engine】
+Transform scattered ideas, reading notes, conversation snippets, and fleeting emotions into **structured data**. Not diaries written for others, but digital slices with timestamps, geolocations, emotional tags, and linked people. Capture that "thought I had last week but can't quite recall" or the "scent of that afternoon three years ago" and preserve them locally, permanently.
+
+**Difference from PKM:** PKM records "which topic this knowledge belongs to"; Life Index records "when this thought occurred and what state of mind I was in."
+
+**Difference from Agent Memory:** Agent memory records for conversational coherence right now; Life Index records for future retrieval — even if the Agent has been uninstalled and reset by then, your life archive remains completely intact.
+
+### 【Index Engine】
+Retrieve past moments instantly through multi-dimensional tags (**time/topic/people/emotion**). Verify whether your intuition back then was correct, analyze the specific decisions that led to a startup's failure, or answer that occasional question: **"What exactly was I thinking ten years ago?"**
+
+**Difference from PKM:** PKM indexes to find "related knowledge"; Life Index indexes to find "myself at that moment."
+
+**Difference from Agent Memory:** Agent memory retrieves to "pick up where we left off"; Life Index retrieves to "reunite with my past self."
+
+---
+
+## 💭 But That's Just the Technical Description
+
+For me, Life Index truly comes alive at midnight: when I stumble upon photos of my daughter at age two, and I can accurately capture that **complex ache of joy mixed with loss** — not just her smile, but my heartbeat as a father that day, the light on the balcony, and the lucid awareness that "this moment is passing."
+
+These records become **digital letters to the future**. Perhaps one day when I'm no longer here, she'll open these files like a faded, yellowed book — reading not just her father's love, but also the wisdom hard-won through a lifetime of stumbles, mistakes, and lessons.
+
+**This is not "memory" for an Agent — it won't help me order takeout or write code. This is a legacy for my daughter, a "past" that only humans need.**
+
+---
+
+## 🎯 Life Index Believes
 
 Everyone deserves such a life archive.
 
-> —— **Do you still remember what drove that decisive choice you made ten years ago?**    
-> —— **Since when do only politicians and the wealthy get to hire writers for their memoirs?**          
-> —— **Would you like to leave the handbook of life wisdom to your kids, a collection of mistakes & lessons？**       
+—— **Must only politicians and the wealthy hire writers for their memoirs?**  
+—— **Are only Elon Musk's thoughts and daily moments worthy of recording?**  
+—— **Do you still remember what drove that decisive choice you made ten years ago?**  
+—— **Would you like to leave your next generation a playbook of life lessons, a collection of mistakes (and corrections), or even a digital legacy of memories?**
 
-This is a digital asset for us common people.
+**This is digital equity for common people — not about optimizing Agents, but about recording ourselves.**
 
 ---
 
@@ -219,6 +278,7 @@ Apache License 2.0 — Your life data belongs to you. So does this code.
 > 
 
 > *—— From the first Life Index entry, March 4, 2026, Lagos. Not a record of her growth. A record of my love.*
+
 
 
 
