@@ -27,9 +27,9 @@ I didn't create this to show off my coding skills. I created it to build a **Per
 
 **🎯 My belief is that ——**    
 
-> —— **Since when do only politicians and the wealthy get to hire writers for their memoirs?**    
 > —— **Do you still remember what drove that decisive choice you made ten years ago?**    
-> —— **Would you like to leave the handbook of life wisdom to your kids, a collection of mistakes & lessons**   
+> —— **Since when do only politicians and the wealthy get to hire writers for their memoirs?**          
+> —— **Would you like to leave the handbook of life wisdom to your kids, a collection of mistakes & lessons**       
 
 **This is a digital asset for us common people.**
 
@@ -217,6 +217,7 @@ Apache License 2.0 — Your life data belongs to you. So does this code.
 > 
 
 > *—— From the first Life Index entry, March 4, 2026, Lagos. Not a record of her growth. A record of my love.*
+
 
 
 
