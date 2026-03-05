@@ -27,7 +27,8 @@
 
 This is my first GitHub repository.
 
-I'm just a regular father with zero coding background — I couldn't even finish this README without AI assistance. I didn't create this to flex technical skills. I built it because I desperately needed a **tool specifically for storing life fragments** —
+I'm just a regular father with zero coding background — I couldn't even finish this README without AI assistance.   
+I didn't create this to flex technical skills. I built it because I desperately needed a **tool specifically for storing life fragments** —
 
 > **Not a Personal Knowledge Management system, not an Agent memory cache, but a personal life archive.**  
 > **Not for knowledge retention, not for AI performance optimization, but for retrieving my own life fragments.**
@@ -284,6 +285,7 @@ Apache License 2.0 — Your life data belongs to you. So does this code.
 > 
 
 > *—— From the first Life Index entry, March 4, 2026, Lagos. Not a record of her growth. A record of my love.*
+
 
 
 
