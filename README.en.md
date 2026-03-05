@@ -21,9 +21,9 @@
 
 This is my first GitHub repository.
 
-I didn't create this to show off my coding skills. I created it to build a **Personal Life Archive** for myself — a place to keep my own life fragments, including that bittersweet ache when I stumble upon photos of my daughter at age two.    
+I didn't create this to show off my coding skills. I created it to build a <u>**Personal Life Archive**</u> for myself — a place to keep my own life fragments, including that bittersweet ache when I stumble upon photos of my daughter at age two.    
 > I want to remember not just how she grew, but how I felt. The weight of her small body in my arms. The moment she ran to the balcony, opened my cigarette pack, and handed me one with her clumsy little hands — not knowing what it was, just imitating the one she loved most.    
-> And if possible, I hope to pass this **record of my whole life** down to her one day. Long after I'm gone, she can open it like a faded, yellowed book — recalling her father's love in every line, and perhaps finding a bit of his hard-won wisdom to guide her.
+> And if possible, I hope to pass this <u>**record of my whole life**</u> down to her one day. Long after I'm gone, she can open it like a faded, yellowed book — recalling her father's love in every line, and perhaps finding a bit of his hard-won wisdom to guide her.
 
 **🎯 I believe that ——**    
 
@@ -219,6 +219,7 @@ Apache License 2.0 — Your life data belongs to you. So does this code.
 > 
 
 > *—— From the first Life Index entry, March 4, 2026, Lagos. Not a record of her growth. A record of my love.*
+
 
 
 
