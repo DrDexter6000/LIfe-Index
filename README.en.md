@@ -14,6 +14,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Philosophy-Personal_Chronicle-ff6b6b" alt="Philosophy">
+  <img src="https://img.shields.io/badge/Core-Agent_Skill-78206E" alt="Core">
   <img src="https://img.shields.io/badge/Storage-Offline_First-4ecdc4" alt="Offline First">
   <img src="https://img.shields.io/badge/Interaction-Natural_Language-ffe66d" alt="Natural Language">
 </p>
@@ -72,7 +73,13 @@ Transform scattered ideas, reading notes, conversation snippets, and fleeting em
 **Difference from Agent Memory:** Agent memory records for conversational coherence right now; Life Index records for future retrieval — even if the Agent has been uninstalled and reset by then, your life archive remains completely intact.
 
 ### 【Index Engine】
-Retrieve past moments instantly through multi-dimensional tags (**time/topic/people/emotion**). Verify whether your intuition back then was correct, analyze the specific decisions that led to a startup's failure, or answer that occasional question: **"What exactly was I thinking ten years ago?"**
+Retrieve past moments instantly through multi-dimensional tags (**time/topic/people/emotion**) + full-text search (FTS5) + semantic search (RAG). Verify whether your intuition back then was correct, analyze the specific decisions that led to a startup's failure, or answer that occasional question: **"What exactly was I thinking ten years ago?"**
+
+**Technical Implementation:**
+- **Full-Text Search (FTS5)**: High-performance keyword retrieval based on SQLite FTS5, supporting BM25 relevance ranking
+- **Semantic Search (RAG)**: Vector embedding-based semantic similarity search, supporting "find entries with similar moods"
+- **Three-Layer Retrieval Architecture**: L1 Index Layer → L2 Metadata Layer → L3 Content Layer, balancing speed and precision
+- **Hybrid Ranking**: Supports weighted hybrid ranking of FTS + semantic search (enabled via `--semantic` parameter)
 
 **Difference from PKM:** PKM indexes to find "related knowledge"; Life Index indexes to find "myself at that moment."
 
@@ -105,11 +112,11 @@ Everyone deserves such a life archive.
 
 ## 📖 What is Life Index?
 
-**Life Index** is **Agent-first.** **Offline by design.**
+**Life Index** is **Agent-first** and **Offline-must (Offline First)**.
 
 In this age of AI and cloud everything, I took a counter-intuitive path: **No cloud sync. No feature bloat. No automation traps.** Just:
 
-> **Speak naturally about your life, your thoughts, your feelings, the books you read, the ideas you share. Let the Agent organize. Retrieve your memories through clear indexes.**
+> **Speak naturally about your life, your thoughts, your feelings, the books you read, the ideas you share. Let the Agent organize and archive, ultimately presenting your life trajectory through clear indexes.**
 
 ### What does a real Life Index entry look like?
 
@@ -121,27 +128,21 @@ In this age of AI and cloud everything, I took a counter-intuitive path: **No cl
 title: "Missing the Diaper Hero"
 date: 2026-03-04T19:43:02
 location: "Lagos, Nigeria"
-weather: "Sunny with scattered showers"
+weather: "Sunny (floating clouds, occasional showers)"
 mood: ["Nostalgic", "Warm", "Melancholy"]
-people: ["Tuantuan (my daughter)"]
+people: ["Tuantuan"]
 tags: ["Parenthood", "Memory", "Growth", "Bittersweet"]
 project: "LifeIndex"
-topic: ["think", "relation"]
-abstract: "Looking at old photos of my daughter. Missing the 2-year-old diaper-clad hero. A meditation on time and fatherhood."
-attachments: ["video_of_her_at_2.mp4"]
+topic: ["think", "create"]
+abstract: "Looking at old photos of my daughter Tuantuan. Missing the 2-year-old diaper-clad hero. Reflecting on the passage of time and father-daughter bond."
+attachments: ["ee8b9f2cf5cc5fc9e41709d9487e9e69-1772648206763-ioju7x.mp4"]
 ---
 
 # Missing the Diaper Hero
 
-*Note: "NiaoPiaXia" (尿片侠, literally "Diaper Hero") was our affectionate nickname for my daughter during her diaper days — describing the clumsy bravery of a 2-year-old exploring the world.*
-
----
-
 While organizing old files, I came across photos of Tuantuan as a baby. That little 2-year-old Diaper Hero.
 
 A sudden sadness hit me — I miss that tiny human so much. I wish I could see her again, just once more. I wish I could hold that little lump of warmth in my arms again.
-
-There's an illusion that the 2-year-old Tuantuan was my baby, and the current Tuantuan is still my heart — but they feel like different people?
 
 Before age three, babies are like small animals, driven entirely by instinct. Hungry, sleepy, playful, wanting mama and papa — none of it goes through rational thought.
 
@@ -157,11 +158,11 @@ I both wish our family could stay forever in that time when she was 2 — and ho
 
 All in all, little bump, Dad misses you.
 
-This one's for you, Tuantuan.
+Tuantuan, this project was built by Dad for you.
 ```
 </details>
 
-This is Life Index's mission: **To remember exactly how that felt — forever beyond big tech's reach.**
+This is Life Index's mission: **Preserving those details that will make you suddenly choke up late at night in the future.**
 
 ---
 
@@ -169,9 +170,9 @@ This is Life Index's mission: **To remember exactly how that felt — forever be
 
 ### 1. Agent-First
 No complex tagging systems to learn. No software interfaces to master. Just tell your Agent:
-> "Log this: I saw old photos of my daughter today and felt that bittersweet ache for when she was two."
+> "Log this: March 4th, 2026, Lagos, sunny. Today I was looking at old photos of my daughter and suddenly missed that 2-year-old Diaper Hero — that sweet yet melancholy feeling."
 
-The Agent extracts metadata automatically (time, location, people, emotions, tags) and generates structured Markdown files.
+The Agent will **assist in organizing** metadata (time, location, people, emotions, tags) — you can describe in natural language, and the Agent will identify and extract key information from your narrative, generating structured Markdown files.
 
 ### 2. Offline-First / Data Sovereignty
 - **100% Local Storage**: All data lives as Markdown + YAML files on your hard drive
@@ -183,28 +184,40 @@ No complex folder nesting. Just three clear dimensions:
 
 | Level | Dimension | Examples |
 |:---:|:---:|:---:|
-| **L1 Topic** | Knowledge Domain | `think` (Reflection), `create` (Creation), `relation` (Relationships) |
-| **L2 Project** | Goal Domain | `LifeIndex` (This project), `Fatherhood` (My journey as a dad) |
-| **L3 Tag** | Feature Domain | `Parenthood`, `Memory`, `Bittersweet`, `DiaperHero` |
+| **L1 Topic** | Topic (Knowledge Dimension) | `think` (Reflection), `create` (Creation), `relation` (Relationships) |
+| **L2 Project** | Project (Goal Dimension) | `LifeIndex` (This project), `Parenting` (Fatherhood journey) |
+| **L3 Tag** | Tag (Feature Dimension) | `Parenthood`, `Memory`, `Bittersweet`, `DiaperHero` |
 
-Want to find "all my melancholic memories about my daughter"? Search `Tuantuan` + `Melancholy` — regardless of which project they belong to.
+Want to find "all my melancholic memories about Tuantuan"? Search `Tuantuan` + `Bittersweet` — regardless of which project they belong to.
 
 ---
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- An AI Agent with file operation capabilities
+- An AI Agent with file operation capabilities (e.g., Openclaw, Lobster AI)
 - A local directory (suggested: `~/Documents/Life-Index`)
+
+### Automation and Scheduled Tasks
+
+Life Index supports automated reporting through your Agent's scheduled task functionality:
+
+- **Daily Report**: Generated and pushed daily at 22:00
+- **Weekly Report**: Generated and pushed every Sunday at 22:10, with annual summary updates
+- **Monthly Report**: Generated and pushed on the last day of each month at 18:30
+- **Annual Report**: Generated and pushed on December 31st at 19:15
+- **Vector Index Update**: Incremental updates daily at 23:50, full rebuild on the 1st of each month at 03:30
+
+**See [SCHEDULE.md](./docs/SCHEDULE.md) for complete scheduled task configuration guide.**
 
 ### Directory Structure
 ```
 Life-Index/
-├── journals/          # Main journal directory (organized by year/month)
+├── Journals/          # Main journal directory (organized by year/month)
 │   └── 2026/
 │       └── 03/
 │           └── life-index_2026-03-04_002.md
-├── attachments/       # Photos, videos, voice memos
+├── attachments/       # Attachments (photos, videos, voice memos)
 │   └── 2026/03/
 │       └── [video_file].mp4
 └── by-topic/          # Auto-generated indexes
@@ -217,13 +230,76 @@ Life-Index/
 
 Simply speak to your Agent:
 
-> "March 5th, 2026, Chongqing, sunny. I want to record why I started Life Index. It's not to build another Notion or Obsidian — it's to help ordinary people like me organize life fragments. I want to record the details of my fatherhood, that bittersweet feeling, like when my daughter imitated me working on laptop at age two..."
+> "March 5th, 2026, Chongqing, sunny. I want to record my original intention for starting Life Index. This project isn't about building another Notion or Obsidian — it's to help ordinary people like me organize life fragments. I want to record details of my daughter's growth and my feelings as a father, like when she imitated me working on the computer at age two..."
 
 The Agent will:
 1. Generate a Markdown file with frontmatter
-2. Auto-extract time, location, weather, tags
+2. Auto-extract time, location, weather, and tags
 3. Update monthly summaries and topic indexes
 4. Keep it plain text, forever readable
+
+---
+
+## 🛠️ Developer Guide
+
+### Command Line Tools
+
+Life Index provides a complete set of CLI tools for developers or advanced users:
+
+```bash
+# Write journal entry
+python tools/write_journal.py --data '{
+  "date": "2026-03-07",
+  "title": "Completed search optimization",
+  "content": "Today I optimized Life Index's search functionality...",
+  "topic": ["work"],
+  "project": "Life-Index",
+  "tags": ["Refactoring", "Optimization"],
+  "mood": ["Focused", "Fulfilled"],
+  "people": ["Tuantuan"]
+}'
+
+# Search journals (full-text)
+python tools/search_journals.py --query "Refactoring" --level 3
+
+# Search journals (semantic search)
+python tools/search_journals.py --query "Study notes" --semantic
+
+# Multi-dimensional filtered search
+python tools/search_journals.py --topic work --mood "Focused,Fulfilled" --people "Tuantuan"
+
+# Generate monthly summary
+python tools/generate_abstract.py --month 2026-03
+
+# Generate annual summary
+python tools/generate_abstract.py --year 2026
+
+# Update search index
+python tools/build_index.py
+```
+
+### Technical Features
+
+| Feature | Description |
+|:---:|:---|
+| **Storage Format** | Markdown + YAML Frontmatter, plain text, future-proof |
+| **Full-Text Search** | SQLite FTS5, supporting BM25 relevance ranking |
+| **Semantic Search** | Vector embeddings based on Sentence Transformers, supporting semantic similarity retrieval |
+| **Index Architecture** | L1 Index Layer → L2 Metadata Layer → L3 Content Layer, balancing speed and precision |
+| **Hybrid Ranking** | Weighted hybrid ranking of FTS + semantic search (default FTS 0.6 + Semantic 0.4) |
+| **Data Isolation** | All user data stored in `~/Documents/Life-Index/`, physically isolated from Skill directory |
+
+### API Interface
+
+All tools return standard JSON format:
+
+```json
+{
+  "success": true,
+  "data": { ... },
+  "error": "Error message (if any)"
+}
+```
 
 ---
 
@@ -233,9 +309,10 @@ Life Index follows the **SSOT (Single Source of Truth)** principle:
 
 | Document | Content | When to Read |
 |:---:|:---:|:---:|
-| **[HANDBOOK.md](./HANDBOOK.md)** | Vision, architecture, core principles | You want to understand "why it's designed this way" |
-| **[AGENT.md](./AGENT.md)** | Agent instructions, tool interfaces, workflows | You're a developer implementing Agent functionality |
-| **[CHANGELOG.md](./CHANGELOG.md)** | Major decision records, version evolution | You want to understand project history |
+| **[HANDBOOK.md](./docs/HANDBOOK.md)** | Project vision, architecture design, core principles | You want to understand "why it's designed this way" |
+| **[AGENT.md](./docs/AGENT.md)** | Agent execution instructions, tool interfaces, workflows | You're a developer implementing Agent functionality |
+| **[CHANGELOG.md](./docs/CHANGELOG.md)** | Major decision records, version evolution | You want to understand project history |
+| **[SCHEDULE.md](./docs/SCHEDULE.md)** | Scheduled task configuration guide (Daily/Weekly/Monthly/Annual reports) | You want to set up automated reports |
 
 ---
 
@@ -243,7 +320,7 @@ Life Index follows the **SSOT (Single Source of Truth)** principle:
 
 ```
 Prefer simplicity over complexity
-Prefer manual maintenance over automation traps
+Prefer manual maintenance over automation traps  
 Prefer reliability over performance
 ```
 
@@ -257,11 +334,11 @@ We deliberately DON'T do:
 
 ## 🌱 Who is this for?
 
-- **New Parents**: Who want to record their own experience of parenthood — that bittersweet ache, the wonder, the heartbreak — not just baby's milestones
+- **New Parents**: Who want to record their authentic experience of parenthood — the exhaustion, wonder, and heartbreak, not just baby's milestones
 - **Digital Nomads**: Moving between cities, needing to record locations and local states of mind
 - **Long-termists**: Wanting a system that lasts 30 years, not chasing the latest productivity tool
 - **Privacy Conscious**: Believing your life details shouldn't be training data for cloud services
-- **Ordinary People**: Who believe their daily life fragments are worth preserving, even without being "productive"
+- **Every Ordinary Person**: Who believes their life fragments are worth preserving, even if not "efficient" or "useful"
 
 ---
 
@@ -281,25 +358,6 @@ Apache License 2.0 — Your life data belongs to you. So does this code.
 
 ---
 
-> *"I both wish our family could stay forever in that time when she was 2 — and hope she grows up to experience an even more beautiful world. All in all, little bump, Dad misses you. This one's for you, Tuantuan."*
+> *"I both wish our family could stay forever in that time when she was 2 — and hope she grows up to experience an even more beautiful world. All in all, little bump, Dad misses you. Tuantuan, this project was built by Dad for you."*
 > 
-
-> *—— From the first Life Index entry, March 4, 2026, Lagos. Not a record of her growth. A record of my love.*
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+> *—— From the first Life Index entry, March 4, 2026, Lagos. Not a record of her growth. A record of my love for her.*
