@@ -141,6 +141,8 @@ def search_l2_metadata(
     topic: Optional[str] = None,
     project: Optional[str] = None,
     tags: Optional[List[str]] = None,
+    mood: Optional[List[str]] = None,
+    people: Optional[List[str]] = None,
     query: Optional[str] = None
 ) -> List[Dict[str, Any]]:
     """
@@ -208,6 +210,26 @@ def search_l2_metadata(
                         if not isinstance(file_tags, list):
                             file_tags = [file_tags]
                         if not any(tag in file_tags for tag in tags):
+                            continue
+
+                    # Mood过滤
+                    if mood:
+                        file_moods = metadata.get('mood', [])
+                        if isinstance(file_moods, str):
+                            file_moods = [file_moods]
+                        if not isinstance(file_moods, list):
+                            file_moods = []
+                        if not any(m in file_moods for m in mood):
+                            continue
+
+                    # People过滤
+                    if people:
+                        file_people = metadata.get('people', [])
+                        if isinstance(file_people, str):
+                            file_people = [file_people]
+                        if not isinstance(file_people, list):
+                            file_people = []
+                        if not any(p in file_people for p in people):
                             continue
 
                     # Query 过滤：当指定 query 时，要求元数据包含该关键词
@@ -324,6 +346,8 @@ def hierarchical_search(
     topic: Optional[str] = None,
     project: Optional[str] = None,
     tags: Optional[List[str]] = None,
+    mood: Optional[List[str]] = None,
+    people: Optional[List[str]] = None,
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
     location: Optional[str] = None,
@@ -351,6 +375,8 @@ def hierarchical_search(
             "topic": topic,
             "project": project,
             "tags": tags,
+            "mood": mood,
+            "people": people,
             "date_from": date_from,
             "date_to": date_to,
             "level": level,
@@ -409,6 +435,8 @@ def hierarchical_search(
         topic=topic,
         project=project,
         tags=tags,
+        mood=mood,
+        people=people,
         query=query  # 传递 query，L2 层也会过滤元数据
     )
 
@@ -819,6 +847,8 @@ Examples:
     parser.add_argument("--date-to", help="结束日期 (YYYY-MM-DD)")
     parser.add_argument("--location", help="按地点过滤")
     parser.add_argument("--weather", help="按天气过滤")
+    parser.add_argument("--mood", help="按心情过滤（逗号分隔多个）")
+    parser.add_argument("--people", help="按人物过滤（逗号分隔多个）")
     parser.add_argument("--level", type=int, choices=[1, 2, 3], default=3,
                         help="搜索层级: 1=索引, 2=元数据, 3=全文 (默认: 3)")
     parser.add_argument("--use-index", action="store_true",
@@ -836,6 +866,8 @@ Examples:
 
     # 解析标签
     tags = args.tags.split(",") if args.tags else None
+    mood = args.mood.split(",") if args.mood else None
+    people = args.people.split(",") if args.people else None
 
     # 执行搜索
     result = hierarchical_search(
@@ -843,6 +875,8 @@ Examples:
         topic=args.topic,
         project=args.project,
         tags=tags,
+        mood=mood,
+        people=people,
         date_from=args.date_from,
         date_to=args.date_to,
         location=args.location,

@@ -1,7 +1,7 @@
 ---
 name: life-index
 description: "个人日志管理系统 - 记录、检索、回顾生活点滴。当用户需要记录日记、搜索历史日志、查看月度/年度摘要时使用。"
-license: MIT
+license: Apache-2.0
 ---
 
 # When to Use
