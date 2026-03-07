@@ -107,9 +107,10 @@ def format_frontmatter(data: Dict[str, Any]) -> str:
     if mood:
         lines.append(f'mood: {json.dumps(mood, ensure_ascii=False)}')
 
-    # 人物（数组）- 始终输出
+    # 人物（数组）
     people = data.get("people", [])
-    lines.append(f'people: {json.dumps(people, ensure_ascii=False)}')
+    if people:
+        lines.append(f'people: {json.dumps(people, ensure_ascii=False)}')
 
     # 标签（数组）
     tags = data.get("tags", [])
@@ -121,29 +122,25 @@ def format_frontmatter(data: Dict[str, Any]) -> str:
     if project:
         lines.append(f'project: "{project}"')
 
-    # 主题（数组格式）
+    # 主题（数组或字符串）
     topic = data.get("topic", [])
     if topic:
         if isinstance(topic, list):
             lines.append(f'topic: {json.dumps(topic, ensure_ascii=False)}')
         else:
-            # 转换为数组格式
-            lines.append(f'topic: {json.dumps([topic], ensure_ascii=False)}')
+            lines.append(f'topic: "{topic}"')
 
-    # 摘要（必填，自动生成）
+    # 摘要
     abstract = data.get("abstract", "")
-    if not abstract:
-        # 自动生成摘要：从内容中提取前100字
-        content = data.get("content", "")
-        if content:
-            abstract = content[:100] + "..." if len(content) > 100 else content
-    lines.append(f'abstract: "{abstract}"')
+    if abstract:
+        lines.append(f'abstract: "{abstract}"')
 
-    # 链接（数组）- 始终输出
+    # 链接（数组）
     links = data.get("links", [])
-    lines.append(f'links: {json.dumps(links, ensure_ascii=False)}')
+    if links:
+        lines.append(f'links: {json.dumps(links, ensure_ascii=False)}')
 
-    # 附件（数组）- 始终输出
+    # 附件（记录相对路径列表）
     attachments = data.get("attachments", [])
     if attachments:
         att_list = []
@@ -155,9 +152,8 @@ def format_frontmatter(data: Dict[str, Any]) -> str:
                     att_list.append(path)
             elif isinstance(att, str):
                 att_list.append(att)
-        lines.append(f'attachments: {json.dumps(att_list, ensure_ascii=False)}')
-    else:
-        lines.append(f'attachments: []')
+        if att_list:
+            lines.append(f'attachments: {json.dumps(att_list, ensure_ascii=False)}')
 
     lines.append("---")
     return "\n".join(lines)
