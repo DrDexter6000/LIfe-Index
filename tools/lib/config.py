@@ -56,7 +56,7 @@ seq: {seq}
 """
 
 # Default values
-DEFAULT_LOCATION = "Lagos, Nigeria"
+DEFAULT_LOCATION = "重庆，中国"
 DEFAULT_TOPIC = "life"
 DEFAULT_PROJECT = "life-index"
 

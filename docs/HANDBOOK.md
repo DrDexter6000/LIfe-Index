@@ -534,14 +534,12 @@ python tools/edit_journal.py --journal "..." --set-topic "learn"
 
 ### 8.2 当前阶段
 
-**Phase 3: 数据迁移与生产就绪**（进行中）
+**Phase 5: 体验优化**（已完成）
 
 关键任务:
-- [x] 清理绝对路径，统一使用相对路径
-- [ ] 历史数据格式验证
-- [ ] 旧格式日志迁移
-- [ ] 端到端验收测试
-- [ ] 生产环境部署
+- [x] RAG/FTS 索引实现
+- [x] E2E 测试框架完成
+- [x] 天气自动填充与确认流程
 
 详见: [Development-Roadmap-v1.md](./Development-Roadmap-v1.md)
 

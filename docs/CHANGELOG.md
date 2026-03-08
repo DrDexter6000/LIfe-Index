@@ -49,7 +49,7 @@ Agent: "日志已保存。当前记录信息：地点：重庆，中国；天气
 - `tools/generate_yearly_abstract.py` 标记为已合并（保留在 GitHub，排除在 ClawHub 外）
 - `.gitignore` 和 `.clawhubignore` 更新排除旧工具
 
-**SSOT 同步**: 更新 [SKILL.md](../skill/SKILL.md) 工作流和示例
+**SSOT 同步**: 更新 [SKILL.md](../SKILL.md) 工作流和示例
 
 ---
 

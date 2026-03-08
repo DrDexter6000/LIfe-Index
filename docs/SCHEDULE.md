@@ -1,7 +1,7 @@
 # Life Index 定时任务指南
 
 > 本文档指导 Agent 设置和执行 Life Index 定时任务
-> 版本: 0.1.0
+> **版本/状态**: 详见 [README.md](./README.md)
 
 ---
 

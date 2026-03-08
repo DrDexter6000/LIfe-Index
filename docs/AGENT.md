@@ -2,7 +2,7 @@
 
 > **本文档职责**: Agent 可执行指令详细参考
 > **适用对象**: 具备文件操作能力的 AI Agent（Claude、OpenClaw 等）
-> **版本**: 2.0.0
+> **版本/状态**: 详见 [README.md](./README.md)
 >
 > **相关文档**: [架构→HANDBOOK.md](./HANDBOOK.md) | [定时任务→SCHEDULE.md](./SCHEDULE.md) | [变更历史→CHANGELOG.md](./CHANGELOG.md)
 
@@ -82,7 +82,7 @@
 | `title` | ✅ | 日志标题（≤20字） |
 | `content` | ✅ | 日志正文内容 |
 | `date` | ✅ | 日期（YYYY-MM-DD，默认当天） |
-| `topic` | ✅ | 主题分类（预定义7类） |
+| `topic` | ✅ | 主题分类（预定义7类，必填） |
 | `location` | ❌ | 地点（如 "Lagos, Nigeria"） |
 | `weather` | ❌ | 天气描述 |
 | `mood` | ❌ | 心情标签数组 |
