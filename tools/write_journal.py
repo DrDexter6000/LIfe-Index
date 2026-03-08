@@ -349,9 +349,97 @@ def process_attachments(attachments: List[Dict[str, str]], date_str: str, dry_ru
     return processed
 
 
+def query_weather_for_location(location: str, date_str: str = "") -> str:
+    """
+    调用 query_weather.py 工具获取天气信息
+
+    Args:
+        location: 地点名称
+        date_str: 日期字符串（可选，用于历史天气查询）
+
+    Returns:
+        天气描述字符串，失败返回空字符串
+    """
+    try:
+        cmd = [
+            sys.executable,
+            str(TOOLS_DIR / "query_weather.py"),
+            "--location", location
+        ]
+        if date_str:
+            cmd.extend(["--date", date_str[:10]])
+
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            encoding='utf-8',
+            timeout=15
+        )
+
+        if proc.returncode == 0:
+            output = json.loads(proc.stdout)
+            # 提取天气描述
+            if isinstance(output, dict):
+                if "weather" in output:
+                    return output["weather"]
+                elif "description" in output:
+                    return output["description"]
+        return ""
+    except Exception:
+        return ""
+
+
+def normalize_location(location: str) -> str:
+    """
+    规范化地点名称，处理城市级别输入
+    例如："重庆" -> "重庆，中国"
+    """
+    if not location:
+        return "重庆，中国"
+
+    location = location.strip()
+
+    # 如果已经包含国家信息，直接返回
+    if "，" in location or "," in location:
+        return location
+
+    # 常见城市默认国家映射
+    city_to_country = {
+        "重庆": "中国",
+        "北京": "中国",
+        "上海": "中国",
+        "广州": "中国",
+        "深圳": "中国",
+        "成都": "中国",
+        "杭州": "中国",
+        "武汉": "中国",
+        "西安": "中国",
+        "南京": "中国",
+        "lagos": "Nigeria",
+        "lagos": "Nigeria",
+        "beijing": "China",
+        "shanghai": "China",
+        "guangzhou": "China",
+        "shenzhen": "China",
+    }
+
+    location_lower = location.lower()
+    if location_lower in city_to_country:
+        country = city_to_country[location_lower]
+        return f"{location}，{country}"
+
+    # 中文城市名（不带逗号）默认添加中国
+    if all('\u4e00' <= char <= '\u9fff' for char in location):
+        return f"{location}，中国"
+
+    return location
+
+
 def write_journal(data: Dict[str, Any], dry_run: bool = False) -> Dict[str, Any]:
     """
     写入日志的主函数
+    自动处理默认值和天气查询
 
     Returns:
         {
@@ -359,6 +447,11 @@ def write_journal(data: Dict[str, Any], dry_run: bool = False) -> Dict[str, Any]
             "journal_path": str,
             "updated_indices": [str],
             "attachments_processed": [dict],
+            "location_used": str,
+            "weather_used": str,
+            "weather_auto_filled": bool,
+            "needs_confirmation": bool,
+            "confirmation_message": str,
             "error": str (optional)
         }
     """
@@ -367,6 +460,11 @@ def write_journal(data: Dict[str, Any], dry_run: bool = False) -> Dict[str, Any]
         "journal_path": None,
         "updated_indices": [],
         "attachments_processed": [],
+        "location_used": "",
+        "weather_used": "",
+        "weather_auto_filled": False,
+        "needs_confirmation": False,
+        "confirmation_message": "",
         "error": None
     }
 
@@ -375,6 +473,39 @@ def write_journal(data: Dict[str, Any], dry_run: bool = False) -> Dict[str, Any]
         date_str = data.get("date")
         if not date_str:
             raise ValueError("缺少必需字段: date")
+
+        # ===== 第一层：用户提及为准 =====
+        # 如果用户提供了地点和天气，直接使用
+
+        # ===== 第二层：自动填充 =====
+        # 处理地点：如果未提供，使用默认值
+        location = data.get("location", "").strip()
+        if not location:
+            location = "重庆，中国"
+            result["location_used"] = location
+        else:
+            # 规范化地点（处理城市级别输入）
+            location = normalize_location(location)
+            result["location_used"] = location
+
+        data["location"] = location
+
+        # 处理天气：如果未提供，自动查询
+        weather = data.get("weather", "").strip()
+        if not weather:
+            # 尝试获取天气
+            queried_weather = query_weather_for_location(location, date_str)
+            if queried_weather:
+                weather = queried_weather
+                result["weather_used"] = weather
+                result["weather_auto_filled"] = True
+            else:
+                weather = ""
+                result["weather_used"] = ""
+        else:
+            result["weather_used"] = weather
+
+        data["weather"] = weather
 
         # 获取年月和序列号
         year, month = get_year_month(date_str)
@@ -437,6 +568,17 @@ def write_journal(data: Dict[str, Any], dry_run: bool = False) -> Dict[str, Any]
             result["updated_indices"].extend([str(i) for i in indices])
 
         result["success"] = True
+
+        # ===== 第三层：写入后确认 =====
+        result["needs_confirmation"] = True
+        result["confirmation_message"] = (
+            f"日志已保存至：{journal_path}\n\n"
+            f"当前记录信息：\n"
+            f"- 地点：{location}\n"
+            f"- 天气：{weather if weather else '（未获取）'}\n\n"
+            f"请确认以上信息是否正确。如需修改，请告诉我新的地点或天气信息，"
+            f"我将为您更新日志文件。"
+        )
 
     except Exception as e:
         result["error"] = str(e)

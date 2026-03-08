@@ -38,6 +38,34 @@ triggers:
 4. **查询天气**：当需要补全日志天气信息时，自动调用 query-weather
 5. **生成摘要**：当用户说"生成月度摘要"、"查看年度总结"时，使用 generate-abstract
 
+# Weather Handling Rules
+
+## 三层天气处理机制
+
+write-journal 工具内置完整天气处理逻辑，Agent 只需调用工具，无需额外处理：
+
+### 第一层：用户提及为准
+- 如果用户在日志内容中提及地点和天气，write-journal 会自动提取并使用
+- 如果用户明确提供了 location 和 weather 字段，直接使用用户提供的值
+
+### 第二层：自动填充（工具内部处理）
+- **地点默认值**：如果用户未提供地点，自动使用 "重庆，中国"
+- **地点规范化**：如果用户只提供城市名（如"重庆"），自动推断国家为"中国"
+- **天气自动查询**：如果未提供天气，工具自动调用 query-weather 获取
+
+### 第三层：写入后确认
+- write-journal 返回结果中包含 `needs_confirmation: true`
+- Agent 应展示 `confirmation_message` 给用户，询问地点和天气是否正确
+- 如果用户需要修改，使用 edit-journal 工具更新日志文件
+
+## 用户修改场景处理
+
+| 用户反馈 | Agent 操作 |
+|:---|:---|
+| 用户补充了地点和天气 | 调用 edit-journal 更新 location 和 weather 字段 |
+| 用户只补充了地点 | 调用 edit-journal 更新 location，工具会自动重新查询天气 |
+| 用户只补充了城市（如"北京"） | 调用 edit-journal，工具会自动推断为"北京，中国"并查询天气 |
+
 # Required Inputs
 
 ## write-journal
