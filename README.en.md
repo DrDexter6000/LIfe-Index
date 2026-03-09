@@ -196,6 +196,22 @@ Want to find "all my melancholic memories about Tuantuan"? Search `Tuantuan` + `
 - An AI Agent with file operation capabilities (e.g., Openclaw, Lobster AI)
 - A local directory (suggested: `~/Documents/Life-Index`)
 
+### Installing Dependencies
+
+**Required:**
+- Python 3.11+ (runtime environment for core tools)
+
+**Optional:**
+```bash
+# Install semantic search dependencies (recommended)
+pip install -r tools/requirements.txt
+
+# Or install manually
+pip install sentence-transformers
+```
+
+> **Note:** `sentence-transformers` powers the semantic search feature. If not installed, the system will automatically skip vector indexing — full-text search (FTS5) remains fully functional.
+
 ### Automation and Scheduled Tasks
 
 Life Index supports automated reporting through your Agent's scheduled task functionality:

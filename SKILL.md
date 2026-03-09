@@ -4,6 +4,7 @@ description: "个人日志管理系统。当用户说'/life-index'、'记日志'
 license: Apache-2.0
 user-invocable: true
 disable-model-invocation: false
+metadata: {"clawdbot":{"emoji":"📖","requires":{"bins":["python"]}}}
 triggers:
   - "/life-index"
   - "记日志"
@@ -190,6 +191,20 @@ write-journal 工具内置完整天气处理逻辑，Agent 只需调用工具，
 └── attachments/                  # 附件存储
     └── YYYY/MM/
 ```
+
+# Prerequisites
+
+## 必需依赖
+
+- **Python 3.11+**：核心工具运行环境
+
+## 可选依赖
+
+- **sentence-transformers**：用于语义搜索功能
+  - 安装命令：`pip install sentence-transformers`
+  - 或使用项目提供的 requirements.txt：`pip install -r tools/requirements.txt`
+
+> **注意**：如未安装 sentence-transformers，语义搜索功能将自动跳过，全文搜索（FTS5）仍可正常使用。
 
 # Installation
 
