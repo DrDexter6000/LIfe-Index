@@ -293,26 +293,37 @@ C:\Users\{username}\Documents\Life-Index\
 
 详见: [AGENT.md](./AGENT.md#工具二search_journals)
 
-#### 分层搜索架构的设计 rationale
+#### 四层搜索架构
 
-**为什么需要三层搜索？**
+```
+L1: 索引层 (by-topic/)     → 文件系统扫描，< 10ms
+L2: 元数据层 (frontmatter) → 文件系统扫描，< 50ms
+L3: 全文层 (FTS5)          → SQLite 索引，< 50ms（与数量无关）
+L4: 语义层 (向量)           → sqlite-vec，可选启用
+```
+
+**设计考量**：
 
 | 层级 | 适用数据规模 | 核心作用 | 当前状态 |
 |------|-------------|---------|---------|
 | **L1 索引层** | 1000+ 篇日志 | 通过 topic/project/tag 快速缩小范围 | 轻度使用 |
 | **L2 元数据层** | 100-1000 篇 | 按日期/地点/天气等结构化字段过滤 | 日常使用 |
-| **L3 内容层** | 任何规模 | 全文关键词搜索（FTS/向量索引） | **主要使用** |
+| **L3 全文层** | 任何规模 | FTS5 全文索引，性能与数量无关 | **主要使用** |
+| **L4 语义层** | 需要语义匹配 | 向量相似度搜索（混合排序） | 可选启用 |
 
-**设计考量**（面向开源和长期使用）：
+**混合排序公式**（启用 `--semantic` 时）：
+```
+final_score = w1×fts_score + w2×vec_score + w3×time_decay
+```
 
-1. **渐进式性能**: 小数据量时 L3 足够快（<20ms），大数据量时 L1/L2 预过滤避免全量扫描
-2. **可靠性分层**: 索引损坏时可降级（L1/L2 失效 → 直接 L3 扫描）
-3. **导航与搜索分离**: 目录结构（by-topic/）服务于人工浏览，不强制作为搜索入口
+**跨平台兼容性**：
+- sqlite-vec（Linux/macOS/Windows DLL）: 高性能 C 扩展
+- simple_numpy（所有平台）: 纯 Python 降级方案
 
 **当前实践**（数据量 < 100 篇）：
-- 默认直接使用 L3 FTS 搜索（`--use-index`）
+- 默认使用 L3 FTS 搜索（`--use-index`）
 - L1/L2 作为过滤条件显式启用（`--topic work --date-from 2026-01-01`）
-- 性能已达标，三层架构为未来预留扩展空间
+- 语义搜索可选启用（`--semantic`）
 
 ### 6.3 query_weather
 
@@ -362,138 +373,11 @@ C:\Users\{username}\Documents\Life-Index\
 
 ---
 
-## 7. 未来增强（Roadmap）
+## 7. 开发路线图
 
-### 7.1 附件哈希去重（Planned）
+> 已完成功能详见第 6 章"原子工具概述"。
 
-**背景**: 用户可能多次上传相同照片/视频，造成存储浪费。
-
-**方案**: 为每个附件计算 SHA-256 哈希，作为唯一标识。
-
-```yaml
-# frontmatter 中的 attachments 字段
-attachments:
-  - filename: "IMG_20260304.jpg"
-    hash: "sha256:a1b2c3d4..."  # 文件内容哈希
-    size: 2048576
-    description: "尿片侠的视频截图"
-```
-
-**应用场景**:
-| 场景 | 哈希用途 |
-|------|---------|
-| **去重存储** | 相同哈希的附件只存一份，节省空间 |
-| **完整性校验** | 验证附件未被意外修改或损坏 |
-| **快速检索** | 通过哈希查找相同内容的不同日志引用 |
-| **同步冲突解决** | 多设备同步时判断文件是否相同 |
-
-**实现位置**: `write_journal.py` 的 `process_attachments()` 函数中计算并记录哈希。
-
-**优先级**: P2（优化类），不影响核心功能。
-
-### 7.2 语义检索增强 (RAG) - 已实现
-
-**状态**: ✅ 已交付（2026-03-06）
-
-#### 实现概览
-
-| 组件 | 文件 | 状态 |
-|------|------|------|
-| FTS 全文索引 | `lib/search_index.py` | ✅ 可用 |
-| 向量语义索引 | `lib/semantic_search.py` | 🚧 框架就绪，待 sqlite-vec 稳定 |
-| 索引构建工具 | `build_index.py` | ✅ 可用 |
-| 搜索集成 | `search_journals.py --use-index` | ✅ 可用 |
-
-#### 使用方式
-
-```bash
-# 每日增量更新（Agent 定时任务 02:00）
-python tools/build_index.py
-
-# 每月全量重建（Agent 定时任务 每月1日 03:00）
-python tools/build_index.py --rebuild
-
-# 使用 FTS 索引加速搜索
-python tools/search_journals.py --query "重构" --use-index
-
-# 查看索引统计
-python tools/build_index.py --stats
-```
-
-#### 技术架构
-
-**四层搜索体系**:
-```
-L1: 索引层 (by-topic/)     → 文件系统扫描，< 10ms
-L2: 元数据层 (frontmatter) → 文件系统扫描，< 50ms
-L3: 全文层 (FTS5)          → SQLite 索引，< 50ms（与数量无关）⭐ NEW
-L4: 语义层 (向量)           → sqlite-vec，待启用
-```
-
-**混合排序公式**:
-```
-final_score = w1×fts_score + w2×vec_score + w3×time_decay
-```
-
-**存储预估**:
-- 嵌入模型: ~80MB（首次自动下载）
-- FTS 索引: ~200KB/100篇日志
-- 向量索引: ~500KB/100篇日志
-
-#### 跨平台兼容性
-
-**双后端架构**（自动选择）:
-| 后端 | 适用平台 | 技术 | 状态 |
-|------|---------|------|------|
-| sqlite-vec | Linux/macOS/Windows(有DLL) | sqlite-vec 扩展 | 首选 |
-| simple_numpy | 所有平台（Windows友好） | numpy + pickle | 降级 |
-
-**自动选择逻辑**:
-```python
-if sqlite_vec_available():
-    use_sqlite_vec_backend()   # 高性能 C 扩展
-else:
-    use_simple_numpy_backend()  # 纯 Python 实现
-```
-
-Windows 用户无需手动安装 sqlite-vec DLL，系统会自动使用 numpy 后端。
-
-#### 设计约束（保持不变）
-
-- **默认启用**: 开箱即用，零额外配置
-- **零外部依赖**: 无云服务，全本地运行
-- **非阻塞写入**: 索引构建不延迟日志记录
-- **可靠性优先**: 索引损坏可重建，搜索可降级到文件系统扫描
-
-### 7.3 日志编辑与补全（已实现）
-
-**工具**: `edit_journal.py`
-
-**设计原则**: 支持"先写入后编辑"的极速记录模式，location/weather 等字段可在后期补全。
-
-**功能特性**:
-| 特性 | 说明 |
-|------|------|
-| Frontmatter 编辑 | `--set-location`, `--set-weather`, `--set-topic` 等 |
-| 正文追加/替换 | `--append-content`, `--replace-content` |
-| 索引自动同步 | topic/project/tag 变更时自动重建索引 |
-| 预览模式 | `--dry-run` 预览修改结果 |
-
-**使用场景**:
-```bash
-# 场景1: 补充地点和天气
-python tools/edit_journal.py --journal "Journals/2026/03/life-index_..." \
-  --set-location "Beijing, China" --set-weather "多云"
-
-# 场景2: 追加内容
-python tools/edit_journal.py --journal "..." \
-  --append-content "下午还讨论了部署方案。"
-
-# 场景3: 修改分类（触发索引重建）
-python tools/edit_journal.py --journal "..." --set-topic "learn"
-```
-
-### 7.4 生产就绪功能（P1 - 近期）
+### 7.1 生产就绪功能（P1 - 近期）
 
 | 功能 | 价值 | 技术风险 | 实现思路 |
 |------|------|---------|---------|
@@ -501,15 +385,14 @@ python tools/edit_journal.py --journal "..." --set-topic "learn"
 | **数据完整性校验** | 检测文件损坏 | 低 | `validate_data.py` 已交付 |
 | **附件哈希去重** | 避免重复存储 | 低 | 写入前计算哈希，重复则引用现有文件 |
 
-### 7.5 体验优化（P2 - 中期）
+### 7.2 体验优化（P2 - 中期）
 
 | 功能 | 价值 | 技术风险 | 实现思路 |
 |------|------|---------|---------|
-| ~~增量搜索索引~~ | ✅ **已完成** | - | SQLite FTS5 + sqlite-vec，已实现 |
 | **自然语言查询** | "去年春天的照片" → 结构化查询 | 高 | 需要 LLM 解析时间表达式和意图 |
 | **Obsidian 导出** | 一次性导出兼容格式 | 低 | `export_to_obsidian.py` 脚本，非实时同步 |
 
-### 7.6 明确不做（保持克制）
+### 7.3 明确不做（保持克制）
 
 | 功能 | 不做原因 |
 |------|---------|

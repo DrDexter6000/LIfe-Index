@@ -73,16 +73,6 @@
 
 ---
 
-> **本文档职责**: 决策变更历史 SSOT，记录"何时做了什么决定"
-> **版本/状态**: 详见 [README.md](./README.md)
->
-> **允许写入**: 决策摘要、变更原因、影响范围、关联引用
-> **禁止写入**: 详细技术实现（去 HANDBOOK.md）、工作流步骤（去 AGENT.md）、临时开发状态（去 dev-progress.md）
->
-> **相关文档**: [架构→HANDBOOK.md](./HANDBOOK.md) | [工作流→AGENT.md](./AGENT.md) | [当前任务→dev-progress.md](./dev-progress.md) | [版本→README.md](./README.md)
-
----
-
 ## [2026-03-08] 天气自动填充与确认流程
 
 **决策**: 实现三层天气处理机制，减少用户输入负担，确保日志完整性。

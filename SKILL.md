@@ -91,7 +91,7 @@ python tools/search_journals.py --query "关键词" --topic "work" --level 3
 ### tools/edit_journal.py
 
 ```bash
-python tools/edit_journal.py --journal-path "Journals/2026/03/life-index_2026-03-09_001.md" --updates '{"weather":"晴天"}'
+python tools/edit_journal.py --journal "Journals/2026/03/life-index_2026-03-09_001.md" --set-weather "晴天"
 ```
 
 ### tools/generate_abstract.py
@@ -103,18 +103,6 @@ python tools/generate_abstract.py --month 2026-03
 # 年度摘要
 python tools/generate_abstract.py --year 2026
 ```
-
-## 为什么禁止手动写入？
-
-手动使用 `Write` 工具创建日志文件会导致：
-
-1. **序列号错误**：无法自动检测当天已有日志数量
-2. **天气缺失**：无法自动查询天气信息
-3. **附件丢失**：无法自动检测和处理 content 中的文件路径
-4. **索引断裂**：无法自动更新主题/项目/标签索引
-5. **摘要失效**：无法自动更新月度摘要统计
-
-**所有核心功能都内置于工具中，手动实现必然遗漏关键逻辑。**
 
 # Weather Handling Rules
 
@@ -208,6 +196,7 @@ python tools/edit_journal.py --journal "..." --set-location "Lagos, Nigeria" --s
 - **project** (string, optional): 关联项目
 - **tags** (array, optional): 标签数组
 - **abstract** (string, optional): 100字内摘要
+- **links** (array, optional): 相关链接数组
 - **attachments** (array, optional): 附件列表，每项包含 source_path 和 description
 
 ## Attachment Auto-Detection
@@ -248,20 +237,39 @@ python tools/edit_journal.py --journal "..." --set-location "Lagos, Nigeria" --s
 
 ## tools/search_journals.py
 
-- **query** (string, optional): 搜索关键词
+- **query** (string, optional): 搜索关键词（支持 `--query` 或 `--keywords`）
 - **topic** (string, optional): 按主题过滤
 - **project** (string, optional): 按项目过滤
 - **tags** (string, optional): 按标签过滤（逗号分隔）
 - **date_from** (string, optional): 起始日期 (YYYY-MM-DD)
 - **date_to** (string, optional): 结束日期 (YYYY-MM-DD)
+- **location** (string, optional): 按地点过滤
+- **weather** (string, optional): 按天气过滤
+- **mood** (string, optional): 按心情过滤（逗号分隔多个）
+- **people** (string, optional): 按人物过滤（逗号分隔多个）
 - **level** (integer, optional, default: 3): 搜索层级: 1=索引, 2=元数据, 3=全文
-- **semantic** (boolean, optional, default: false): 是否启用语义搜索
+- **use-index** (flag, optional): 使用 FTS 索引加速全文搜索（需预先运行 build_index.py）
+- **semantic** (flag, optional): 启用语义搜索（混合 BM25 + 向量相似度排序）
+- **semantic-weight** (float, optional, default: 0.4): 语义搜索权重（0-1，需配合 `--semantic`）
+- **fts-weight** (float, optional, default: 0.6): FTS 搜索权重（0-1，需配合 `--semantic`）
+- **limit** (integer, optional): 返回结果数量限制
 
 ## tools/edit_journal.py
 
-- **journal_path** (string, required): 日志文件路径
-- **updates** (object, optional): 要更新的 frontmatter 字段
-- **append_content** (string, optional): 追加到正文的内容
+- **journal** (string, required): 日志文件路径（相对或绝对路径）
+- **set-title** (string, optional): 设置标题
+- **set-date** (string, optional): 设置日期
+- **set-location** (string, optional): 设置地点
+- **set-weather** (string, optional): 设置天气
+- **set-mood** (string, optional): 设置心情（逗号分隔多个）
+- **set-people** (string, optional): 设置人物（逗号分隔多个）
+- **set-tags** (string, optional): 设置标签（逗号分隔多个）
+- **set-project** (string, optional): 设置项目
+- **set-topic** (string, optional): 设置主题（逗号分隔多个）
+- **set-abstract** (string, optional): 设置摘要
+- **append-content** (string, optional): 追加内容到正文末尾
+- **replace-content** (string, optional): 替换整个正文内容（保留 frontmatter）
+- **dry-run** (flag, optional): 模拟运行，不实际写入文件
 
 ## tools/query_weather.py（内部工具，无需直接调用）
 
@@ -371,19 +379,6 @@ python tools/edit_journal.py --journal "..." --set-location "Lagos, Nigeria" --s
 
 > **注意**：如未安装 sentence-transformers，语义搜索功能将自动跳过，全文搜索（FTS5）仍可正常使用。
 
-# Installation
-
-```bash
-# 通过 ClawHub 安装
-clawhub install life-index
-
-# 或通过 npx 临时使用
-npx clawhub@latest install life-index
-
-# 或通过 GitHub URL 安装
-# 在 OpenClaw 对话中：请帮我安装这个 skill，GitHub 链接是：https://github.com/your-username/life-index-skill
-```
-
 # Examples
 
 ## 示例 1：记录工作日志
@@ -412,7 +407,7 @@ npx clawhub@latest install life-index
 **Agent**：
 1. 定位：找到昨天的日志文件
 2. 确认：追加内容"测试结果显示搜索速度提升 40%"
-3. 调用：`python tools/edit_journal.py --journal-path "..." --append-content "..."`
+3. 调用：`python tools/edit_journal.py --journal "..." --append-content "..."`
 4. 返回：日志已更新
 
 ## 示例 4：生成月度摘要
