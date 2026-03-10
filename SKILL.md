@@ -1,6 +1,6 @@
 ---
 name: life-index
-description: "个人日志管理系统。当用户说'/life-index'、'记日志'、'写日记'、'write journal'、'daily log'、'记录一下'时立即使用。支持：记录日志（自动天气）、搜索历史、编辑日志、生成摘要。"
+description: "Personal life journaling system with dual-dimension indexing. Use when user says 'record journal', 'log this', 'search logs', 'generate summary', '记日志', '写日记', '搜索记录', '生成摘要'. Features: auto weather, semantic search, attachment handling."
 user-invocable: true
 disable-model-invocation: false
 metadata: {"clawdbot":{"emoji":"📖","requires":{"bins":["python"]}}}
