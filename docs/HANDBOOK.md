@@ -5,9 +5,9 @@
 > **版本/状态**: 详见 [README.md](./README.md)
 >
 > **允许写入**: 设计原则、架构决策、工具职责定义、目录结构规范、术语定义
-> **禁止写入**: 具体工作流步骤（去 AGENT.md）、变更历史（去 CHANGELOG.md）
+> **禁止写入**: 具体工作流步骤（去 INSTRUCTIONS.md）、变更历史（去 CHANGELOG.md）
 >
-> **相关文档**: [工作流→AGENT.md](./AGENT.md) | [变更历史→CHANGELOG.md](./CHANGELOG.md) | [API→API.md](./API.md)
+> **相关文档**: [工作流→INSTRUCTIONS.md](./INSTRUCTIONS.md) | [变更历史→CHANGELOG.md](./CHANGELOG.md) | [API→API.md](./API.md)
 
 ---
 
@@ -60,7 +60,7 @@
 - 专用工具仅在需要**原子性**、**高可靠性**或**复杂计算**时引入
 - Agent 使用通用文件操作工具直接管理数据
 
-详见: [AGENT.md](./AGENT.md#核心工作流)
+详见: [INSTRUCTIONS.md](./INSTRUCTIONS.md#核心工作流)
 
 ### 2.2 数据主权
 
@@ -81,7 +81,7 @@
 | 信息类型 | 唯一来源 | 说明 |
 |---------|---------|------|
 | 项目愿景与本手册 | HANDBOOK.md | 本文档 |
-| Agent 执行指令 | AGENT.md | 工具调用、工作流步骤 |
+| Agent 执行指令 | INSTRUCTIONS.md | 工具调用、工作流步骤 |
 | 决策变更历史 | CHANGELOG.md | 按日期记录的重大决策 |
 | 开发计划 | Roadmap.md | Phase 划分与里程碑 |
 
@@ -164,7 +164,7 @@ Life Index 系统
 | L2 | Project（项目） | <10个活跃 | 目标维度，动态管理 |
 | L3 | Tag（标签） | 无限制 | 特征维度，灵活使用 |
 
-详见: [AGENT.md](./AGENT.md#分类体系)
+详见: [INSTRUCTIONS.md](./INSTRUCTIONS.md#分类体系)
 
 ---
 
@@ -282,7 +282,7 @@ C:\Users\{username}\Documents\Life-Index\
 - **输出**: 成功状态、文件路径、更新的索引列表
 - **内部行为**: 生成文件名 → 复制附件 → 渲染 frontmatter → 写入文件 → 更新月度/年度/by-topic 索引
 
-详见: [AGENT.md](./AGENT.md#工具一write_journal)
+详见: [INSTRUCTIONS.md](./INSTRUCTIONS.md#工具一write_journal)
 
 ### 6.2 search_journals
 
@@ -291,7 +291,7 @@ C:\Users\{username}\Documents\Life-Index\
 - **输出**: 匹配结果列表、聚合统计、性能指标
 - **策略**: L1索引层 → L2元数据层 → L3内容层（按需启用）
 
-详见: [AGENT.md](./AGENT.md#工具二search_journals)
+详见: [INSTRUCTIONS.md](./INSTRUCTIONS.md#工具二search_journals)
 
 #### 四层搜索架构
 
@@ -339,7 +339,7 @@ final_score = w1×fts_score + w2×vec_score + w3×time_decay
 - **输出**: 成功状态、修改摘要
 - **用途**: 极速记录后的补全模式
 
-详见: [AGENT.md](./AGENT.md#工作流4极速记录补全模式推荐默认)
+详见: [INSTRUCTIONS.md](./INSTRUCTIONS.md#工作流4极速记录补全模式推荐默认)
 
 ### 6.5 build_index
 
@@ -367,9 +367,9 @@ final_score = w1×fts_score + w2×vec_score + w3×time_decay
 
 ---
 
-**工具接口详细定义**: 以代码 `--help` 输出为准。AGENT.md 提供工作流层面的使用示例。
+**工具接口详细定义**: 以代码 `--help` 输出为准。INSTRUCTIONS.md 提供工作流层面的使用示例。
 
-详见: [AGENT.md](./AGENT.md#工具三query_weather)
+详见: [INSTRUCTIONS.md](./INSTRUCTIONS.md#工具三query_weather)
 
 ---
 
@@ -444,7 +444,7 @@ final_score = w1×fts_score + w2×vec_score + w3×time_decay
 
 ## 10. 参考链接
 
-- [AGENT.md](./AGENT.md) - Agent 执行指令
+- [INSTRUCTIONS.md](./INSTRUCTIONS.md) - Agent 执行指令
 - [API.md](./API.md) - 工具 API 接口
 - [CHANGELOG.md](./CHANGELOG.md) - 决策变更日志
 - [adr/](./adr/) - 架构决策记录
@@ -455,7 +455,7 @@ final_score = w1×fts_score + w2×vec_score + w3×time_decay
 
 ### 11.1 核心原则
 
-本文档（HANDBOOK.md）、AGENT.md、CHANGELOG.md 构成 Life Index 的**单一事实来源（SSOT）**体系。任何项目变更必须同步更新到对应文档。
+本文档（HANDBOOK.md）、INSTRUCTIONS.md、CHANGELOG.md 构成 Life Index 的**单一事实来源（SSOT）**体系。任何项目变更必须同步更新到对应文档。
 
 ### 11.2 Agent 维护义务
 
@@ -463,8 +463,8 @@ final_score = w1×fts_score + w2×vec_score + w3×time_decay
 
 | 操作类型 | 需更新的文档 | 检查方式 |
 |---------|-------------|---------|
-| 修改工作流逻辑 | AGENT.md | 对比当前步骤与文档描述 |
-| 调整工具接口 | AGENT.md + CHANGELOG.md | 检查接口定义章节 |
+| 修改工作流逻辑 | INSTRUCTIONS.md | 对比当前步骤与文档描述 |
+| 调整工具接口 | INSTRUCTIONS.md + CHANGELOG.md | 检查接口定义章节 |
 | 变更项目原则/架构 | HANDBOOK.md + CHANGELOG.md | 检查核心原则章节 |
 | 完成里程碑任务 | CHANGELOG.md | 记录版本演进 |
 

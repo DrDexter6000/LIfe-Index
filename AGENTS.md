@@ -1,6 +1,6 @@
-# AGENTS.md - Life Index 项目指南
+# AGENTS.md - Life Index 项目开发指南
 
-> 本文档为 AI 编码代理提供项目上下文，帮助理解代码库结构、命令和约定。
+> 本文档为 Life Index 项目开发、为 AI 编码代理（如：OpenCode）提供项目上下文，帮助理解代码库结构、命令和约定。
 
 ## 项目概述
 
@@ -292,7 +292,7 @@ from tools.write_journal import write_journal
 |------|------|
 | `SKILL.md` | Agent 技能定义、触发词、工具接口 |
 | `docs/HANDBOOK.md` | 项目愿景、架构设计、核心原则 |
-| `docs/AGENT.md` | Agent 执行指令、工作流步骤 |
+| `docs/INSTRUCTIONS.md` | Agent 执行指令、工作流步骤 |
 | `docs/API.md` | 工具 API 接口文档 |
 | `docs/SCHEDULE.md` | 定时任务配置（日报/周报/月报） |
 | `docs/adr/` | 架构决策记录 |
@@ -335,14 +335,14 @@ from tools.write_journal import write_journal
 | `AGENTS.md` | 项目上下文、开发约定 | 项目结构变更时 |
 | `SKILL.md` | Agent 技能定义、触发词、工具接口 | 工具接口变更时 |
 | `docs/HANDBOOK.md` | 项目愿景、架构设计、核心原则 | 架构决策时 |
-| `docs/AGENT.md` | Agent 执行指令、工作流步骤 | 工作流变更时 |
+| `docs/INSTRUCTIONS.md` | Agent 执行指令、工作流步骤 | 工作流变更时 |
 | `docs/CHANGELOG.md` | 决策变更历史 | 每次重大变更时 |
 
 ### Agent 维护责任
 
 当执行以下操作时，**必须**同步更新 SSOT 文档：
 
-1. **修改工作流逻辑** → 更新 `docs/AGENT.md`
+1. **修改工作流逻辑** → 更新 `docs/INSTRUCTIONS.md`
 2. **调整工具接口** → 更新 `SKILL.md` + `docs/CHANGELOG.md`
 3. **变更架构/原则** → 更新 `docs/HANDBOOK.md` + `docs/CHANGELOG.md`
 4. **完成里程碑** → 更新 `docs/CHANGELOG.md`

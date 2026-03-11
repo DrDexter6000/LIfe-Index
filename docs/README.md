@@ -11,7 +11,7 @@
 | 文档 | 用途 | 读者 |
 |------|------|------|
 | [HANDBOOK.md](./HANDBOOK.md) | 项目全貌：愿景、原则、架构、术语 | 人类（开发者、用户） |
-| [AGENT.md](./AGENT.md) | Agent 指令：工作流、工具接口、示例 | AI Agent（直接执行） |
+| [INSTRUCTIONS.md](./INSTRUCTIONS.md) | Agent 指令：工作流、工具接口、示例 | AI Agent（直接执行） |
 | [API.md](./API.md) | 工具 API 接口文档 | 开发者 |
 | [CHANGELOG.md](./CHANGELOG.md) | 决策变更历史 | 所有协作者 |
 | [adr/](./adr/) | 架构决策记录 | 设计决策背景 |
@@ -24,7 +24,7 @@
 
 开启新对话并提供：
 ```
-请阅读 docs/AGENT.md，作为我的 Life Index 日志助手。
+请阅读 docs/INSTRUCTIONS.md，作为我的 Life Index 日志助手。
 ```
 
 ### 作为开发者
@@ -32,7 +32,7 @@
 阅读顺序：
 1. [HANDBOOK.md](./HANDBOOK.md) - 理解设计哲学
 2. [CHANGELOG.md](./CHANGELOG.md) - 了解最新决策
-3. [AGENT.md](./AGENT.md) - 查看具体实现
+3. [INSTRUCTIONS.md](./INSTRUCTIONS.md) - 查看具体实现
 
 ---
 
@@ -49,7 +49,7 @@
 |---------|-------------|------|
 | 项目版本/阶段 | **本文件** | 其他文档引用，不重复声明 |
 | 架构规范/工具列表 | [HANDBOOK.md](./HANDBOOK.md) | 设计原则、目录结构、接口定义 |
-| 工作流/CLI示例 | [AGENT.md](./AGENT.md) | Agent 直接执行的指令 |
+| 工作流/CLI示例 | [INSTRUCTIONS.md](./INSTRUCTIONS.md) | Agent 直接执行的指令 |
 | 决策历史 | [CHANGELOG.md](./CHANGELOG.md) | 变更记录，不重复技术细节 |
 
 ---

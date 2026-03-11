@@ -125,7 +125,7 @@ Agent: "日志已保存。当前记录信息：地点：重庆，中国；天气
 - 新增 `merge_and_rank_results_hybrid()` 函数实现混合排序
 - 集成 `vector_index_simple.py` 作为语义搜索后端
 
-**SSOT 同步**: 更新 [AGENT.md](./AGENT.md) 第 5 章搜索工具接口
+**SSOT 同步**: 更新 [INSTRUCTIONS.md](./INSTRUCTIONS.md) 第 5 章搜索工具接口
 
 ---
 
@@ -159,7 +159,7 @@ Agent: "日志已保存。当前记录信息：地点：重庆，中国；天气
 
 **测试覆盖**: 核心工作流、搜索检索、边界异常、数据一致性
 
-**SSOT 同步**: 更新 [AGENT.md](./AGENT.md) 第 10 章
+**SSOT 同步**: 更新 [INSTRUCTIONS.md](./INSTRUCTIONS.md) 第 10 章
 
 ---
 
@@ -193,7 +193,7 @@ Agent: "日志已保存。当前记录信息：地点：重庆，中国；天气
 - `write_journal.py` - 即时写入（允许 location/weather 缺失）
 - `edit_journal.py` - 后期编辑 frontmatter 和正文
 
-**SSOT 同步**: 更新 [AGENT.md](./AGENT.md) 工作流4，[HANDBOOK.md](./HANDBOOK.md) 第 7.3 节
+**SSOT 同步**: 更新 [INSTRUCTIONS.md](./INSTRUCTIONS.md) 工作流4，[HANDBOOK.md](./HANDBOOK.md) 第 7.3 节
 
 ---
 
@@ -247,7 +247,7 @@ Agent: "日志已保存。当前记录信息：地点：重庆，中国；天气
 
 **决策**: 确立三个原子工具：write_journal、search_journals、query_weather。
 
-**SSOT 同步**: 更新 [AGENT.md](./AGENT.md) 第 3 章工作流
+**SSOT 同步**: 更新 [INSTRUCTIONS.md](./INSTRUCTIONS.md) 第 3 章工作流
 
 ---
 
@@ -259,7 +259,7 @@ Agent: "日志已保存。当前记录信息：地点：重庆，中国；天气
 
 ## [2026-03-04] 文档体系重构（SSOT 合规）
 
-**决策**: 拆分文档为 HANDBOOK.md（架构）、AGENT.md（指令）、CHANGELOG.md（历史）。
+**决策**: 拆分文档为 HANDBOOK.md（架构）、INSTRUCTIONS.md（指令）、CHANGELOG.md（历史）。
 
 ---
 

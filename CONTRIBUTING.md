@@ -15,7 +15,7 @@ Life Index is an Agent-first personal journaling system that provides Agent Skil
 
 - **[docs/HANDBOOK.md](docs/HANDBOOK.md)** - Project vision and core principles
 - **[AGENTS.md](AGENTS.md)** - Project context and development conventions
-- **[docs/AGENT.md](docs/AGENT.md)** - Agent execution instructions
+- **[docs/INSTRUCTIONS.md](docs/INSTRUCTIONS.md)** - Agent execution instructions
 
 ### Development Environment Setup
 
@@ -98,7 +98,7 @@ This project follows the **SSOT (Single Source of Truth)** principle. When modif
 
 | Modification Type | Documents to Update |
 |-------------------|---------------------|
-| Workflow logic | `docs/AGENT.md` |
+| Workflow logic | `docs/INSTRUCTIONS.md` |
 | Tool interface | `SKILL.md` + `docs/API.md` + `docs/CHANGELOG.md` |
 | Architecture/Principles | `docs/HANDBOOK.md` + `docs/CHANGELOG.md` |
 | Architecture decisions | `docs/adr/` (create new ADR) |
@@ -183,7 +183,7 @@ Life Index 是一个 Agent-first 的个人日志系统，为 OpenClaw 提供 Age
 
 - **[docs/HANDBOOK.md](docs/HANDBOOK.md)** - 项目愿景和核心原则
 - **[AGENTS.md](AGENTS.md)** - 项目上下文和开发约定
-- **[docs/AGENT.md](docs/AGENT.md)** - Agent 执行指令
+- **[docs/INSTRUCTIONS.md](docs/INSTRUCTIONS.md)** - Agent 执行指令
 
 ### 开发环境设置
 
@@ -266,7 +266,7 @@ if __name__ == "__main__":
 
 | 修改类型 | 需更新文档 |
 |---------|-----------|
-| 工作流逻辑 | `docs/AGENT.md` |
+| 工作流逻辑 | `docs/INSTRUCTIONS.md` |
 | 工具接口 | `SKILL.md` + `docs/API.md` + `docs/CHANGELOG.md` |
 | 架构/原则 | `docs/HANDBOOK.md` + `docs/CHANGELOG.md` |
 | 架构决策 | `docs/adr/` (新建 ADR) |
