@@ -1,0 +1,116 @@
+site_name: Life Index Documentation
+site_description: Personal life journaling system with dual-dimension indexing
+site_author: Life Index Team
+site_url: https://life-index.readthedocs.io
+
+docs_dir: docs
+site_dir: site
+
+# Repository information
+repo_name: life-index
+repo_url: https://github.com/yourusername/life-index
+edit_uri: edit/main/docs/
+
+# Copyright
+copyright: Copyright &copy; 2026 Life Index Team
+
+theme:
+  name: material
+  language: zh
+  palette:
+    # Palette toggle for automatic mode
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.expand
+    - navigation.indexes
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+
+plugins:
+  - search:
+      lang: zh
+  - gen-files:
+      scripts:
+        - docs/gen_ref_pages.py
+  - literate-nav:
+      nav_file: SUMMARY.md
+  - section-index
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [tools]
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            show_category_heading: true
+            show_if_no_docstring: false
+            show_signature_annotations: true
+            separate_signature: true
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - tables
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/yourusername/life-index
+  version:
+    provider: mike
+
+nav:
+  - 首页: README.md
+  - 用户指南:
+      - 快速开始: INSTRUCTIONS.md
+      - API 文档: API.md
+  - 开发文档:
+      - 项目手册: HANDBOOK.md
+      - 架构决策: adr/index.md
+      - 变更日志: CHANGELOG.md
+  - 参考:
+      - 技能定义: ../SKILL.md
+      - 开发指南: ../AGENTS.md
