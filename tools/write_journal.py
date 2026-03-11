@@ -45,6 +45,47 @@ def get_year_month(date_str: str) -> tuple:
 def convert_path_for_platform(source_path: str) -> str:
     """
     跨平台路径转换（双向）
+    
+    自动标准化路径分隔符，并根据配置的 PATH_MAPPINGS 进行平台转换。
+    支持：
+    - 自动将 Windows 反斜杠转换为正斜杠（无论 PATH_MAPPINGS 是否配置）
+    - Windows → Linux/macOS (如 C:\\Users\\xxx → /home/xxx 或 /Users/xxx)
+    - Linux/macOS → Windows (如 /home/xxx → C:\\Users\\xxx)
+    - 任意平台间的映射
+    
+    Args:
+        source_path: 原始路径
+    
+    Returns:
+        标准化后的路径（正斜杠分隔），如果配置了映射则进行转换
+    """
+    if not source_path:
+        return source_path
+    
+    # 步骤 1：始终标准化路径分隔符（反斜杠 → 正斜杠）
+    # 这是关键修复：无论 PATH_MAPPINGS 是否配置，都进行标准化
+    normalized = source_path.replace('\\', '/')
+    
+    # 步骤 2：处理 Windows 长路径前缀
+    if normalized.startswith('//'):
+        normalized = normalized[2:]
+    
+    # 步骤 3：如果配置了 PATH_MAPPINGS，应用映射转换
+    if PATH_MAPPINGS:
+        for from_prefix, to_prefix in PATH_MAPPINGS.items():
+            # 规范化映射前缀
+            normalized_from = from_prefix.replace('\\', '/')
+            normalized_to = to_prefix.replace('\\', '/')
+            
+            # 检查是否匹配（不区分大小写）
+            if normalized.lower().startswith(normalized_from.lower()):
+                # 替换前缀
+                normalized = normalized_to + normalized[len(normalized_from):]
+                break
+    
+    return normalized
+    """
+    跨平台路径转换（双向）
 
     根据配置的 PATH_MAPPINGS 将路径转换为当前平台可访问的格式。
     支持：

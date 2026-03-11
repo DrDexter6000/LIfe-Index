@@ -140,6 +140,40 @@ Agent 改成："1. 完成A\n2. 完成B"
 
 ## ⚠️ 记录日志（必读）
 
+### 元数据完整性规则
+**所有日志必须包含完整的元数据字段，即使值为空。**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| title | string | ✅ | 日志标题 |
+| content | string | ✅ | 日志正文（100%原样保留） |
+| date | string | ✅ | ISO 8601 日期时间 |
+| location | string | ❌ | 地点（自动填充或用户提供） |
+| weather | string | ❌ | 天气（自动查询或用户提供） |
+| mood | array | ❌ | 心情标签（如["开心", "专注"]） |
+| people | array | ❌ | 相关人物（如["张三", "李四"]） |
+| tags | array | ❌ | 标签（从内容提取关键词） |
+| project | string | ❌ | 关联项目（如"Life-Index"） |
+| topic | array | ✅ | 主题分类（如["work", "life"]） |
+| abstract | string | ✅ | ≤100字摘要（Agent生成） |
+| links | array | ❌ | 相关链接（如["https://..."]） |
+
+**Agent 职责**：
+1. 从用户内容中**主动提取** mood、people、tags、project 信息
+2. 即使未提取到，也要传递空值（如 `"mood": []`, `"project": ""`）
+3. 确保调用 write_journal.py 时包含**所有字段**
+
+### 工作流步骤
+
+1. 解析用户输入（title, content, date, topic 等）
+2. **提取元数据**：从 content 中识别 mood、people、tags、project
+3. **生成摘要**：从 content 中提取关键信息，生成 ≤100 字的摘要
+4. 调用 `write_journal.py`（**必须包含所有元数据字段**）
+   - **附件自动处理**：工具自动检测 content 中的本地文件路径（如 `C:\Users\...\file.mp4`），复制到 `attachments/YYYY/MM/` 并在日志末尾添加引用
+5. **检查 `needs_confirmation`**
+6. 展示 `confirmation_message`，询问用户确认
+7. **如果天气查询失败**：使用网络搜索 Fallback
+
 1. 解析用户输入（title, content, date, topic 等）
 2. **生成摘要**：从 content 中提取关键信息，生成 ≤100 字的摘要
 3. 调用 `write_journal.py`（包含 abstract 字段）
