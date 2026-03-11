@@ -374,7 +374,7 @@ Currently, Life Index is in personal-use stage. If you resonate with the "Person
 
 ## 📜 License
 
-Apache License 2.0 — Your life data belongs to you. So does this code.
+[Apache License 2.0](./LICENSE) — Your life data belongs to you. So does this code.
 
 ---
 
