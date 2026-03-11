@@ -1,8 +1,7 @@
 # Life Index 定时任务指南
 
 > **权威文档**：定义基础概念、核心约束、原则规范，并导航至各场景文档。
-> **版本**：v2.0 | **更新**：2026-03-11
-
+> **版本**：v2.1 | **更新**：2026-03-11
 ---
 
 ## 一、核心约束
@@ -122,18 +121,13 @@
 ```
 references/schedule/
 ├── SCHEDULE.md                   ← 本文档（Router）
-├── scenarios/                    ← 场景文档
-│   ├── daily-report.md           ← 日报详细指南
-│   ├── weekly-report.md          ← 周报详细指南
-│   ├── monthly-report.md         ← 月报详细指南
-│   ├── yearly-report.md          ← 年报详细指南
-│   ├── index-update.md           ← 每日索引维护指南
-│   └── index-rebuild.md          ← 每月索引维护指南
-└── templates/                    ← 输出模板
-    ├── daily-template.md         ← 日报输出模板
-    ├── weekly-template.md        ← 周报输出模板
-    ├── monthly-template.md       ← 月报输出模板
-    └── yearly-template.md        ← 年报输出模板
+└── scenarios/                    ← 场景文档（含输出格式）
+    ├── daily-report.md           ← 日报详细指南
+    ├── weekly-report.md          ← 周报详细指南
+    ├── monthly-report.md         ← 月报详细指南
+    ├── yearly-report.md          ← 年报详细指南
+    ├── index-update.md           ← 每日索引维护指南
+    └── index-rebuild.md          ← 每月索引维护指南
 ```
 ---
 
