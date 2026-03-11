@@ -66,17 +66,17 @@ IF data.length > 0:
 1. 使用 Agent 网络搜索能力
 2. 搜索关键词：`this week world news`、`本周国际热点`
 3. 筛选 Top 5，每条 1 句话描述
+4. **每条新闻后附带来源链接**（格式：`[新闻摘要](URL)`）
 
 **超时设置**：30 秒
 
 **失败处理**：
 ```
-IF 热点获取失败:
+  IF 热点获取失败:
   → 省略热点部分
   → 在报告中备注："热点获取失败，已跳过"
   → 继续执行 Step 4
 ```
-
 ---
 
 ### Step 4: 更新年度摘要
@@ -143,12 +143,11 @@ python tools/generate_abstract.py --year {CURRENT_YEAR}
 🔔 需要用户确认是否采用新的输出模板
 
 🌤️ 本周热点
-1. OpenAI 发布 GPT-4.5，推理能力大幅提升
-2. Anthropic 推出 Claude Skills 规范，社区反响热烈
-3. DeepSeek 发布开源模型，性能接近 GPT-4
-4. Google Gemini 2.0 正式上线，多模态能力增强
-5. AI Agent 成为 2026 年技术热点，各大厂商加速布局
-
+1. [OpenAI 发布 GPT-4.5，推理能力大幅提升](https://example.com/news/1)
+2. [Anthropic 推出 Claude Skills 规范，社区反响热烈](https://example.com/news/2)
+3. [DeepSeek 发布开源模型，性能接近 GPT-4](https://example.com/news/3)
+4. [Google Gemini 2.0 正式上线，多模态能力增强](https://example.com/news/4)
+5. [AI Agent 成为 2026 年技术热点，各大厂商加速布局](https://example.com/news/5)
 📊 目标进度
 | 目标 | 周初 | 周末 | 变化 |
 |------|------|------|------|

@@ -70,16 +70,16 @@ IF data.length > 0:
 1. 使用 Agent 网络搜索能力
 2. 搜索关键词：`this month world news`、`本月国际热点`
 3. 筛选 Top 10，每条 1 句话描述
+4. **每条新闻后附带来源链接**（格式：`[新闻摘要](URL)`）
 
 **超时设置**：60 秒
 
 **失败处理**：
 ```
-IF 热点获取失败:
+  IF 热点获取失败:
   → 省略热点部分
   → 在报告中备注
 ```
-
 ---
 
 ### Step 4: 保存文件
@@ -181,17 +181,16 @@ IF 文件写入失败:
 
 ## 🌤️ 国际热点 Top 10
 
-1. GPT-4.5 发布，推理能力接近人类专家水平
-2. Anthropic Claude Skills 规范成为行业标准
-3. DeepSeek 开源模型下载量突破 1 亿次
-4. Google Gemini 2.0 多模态能力全面超越 GPT-4
-5. AI Agent 成为 2026 年最热门技术方向
-6. OpenAI 发布 Agent 框架，简化开发流程
-7. 微软 Copilot 升级，深度集成 Claude 能力
-8. 欧盟 AI 法案正式生效，监管框架明确
-9. AI 安全成为全球关注焦点
-10. 量子计算与 AI 结合取得突破性进展
-```
+1. [GPT-4.5 发布，推理能力接近人类专家水平](https://example.com/news/1)
+2. [Anthropic Claude Skills 规范成为行业标准](https://example.com/news/2)
+3. [DeepSeek 开源模型下载量突破 1 亿次](https://example.com/news/3)
+4. [Google Gemini 2.0 多模态能力全面超越 GPT-4](https://example.com/news/4)
+5. [AI Agent 成为 2026 年最热门技术方向](https://example.com/news/5)
+6. [OpenAI 发布 Agent 框架，简化开发流程](https://example.com/news/6)
+7. [微软 Copilot 升级，深度集成 Claude 能力](https://example.com/news/7)
+8. [欧盟 AI 法案正式生效，监管框架明确](https://example.com/news/8)
+9. [AI 安全成为全球关注焦点](https://example.com/news/9)
+10. [量子计算与 AI 结合取得突破性进展](https://example.com/news/10)
 
 ---
 

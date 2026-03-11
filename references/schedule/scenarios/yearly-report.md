@@ -131,6 +131,7 @@ IF data.length > 0:
 1. 使用 Agent 网络搜索能力
 2. 搜索关键词：`2026 year in review`、`年度热点`
 3. 筛选 Top 10，每条 1 句话描述
+4. **每条新闻后附带来源链接**（格式：`[新闻摘要](URL)`）
 
 **超时设置**：120 秒
 
@@ -292,17 +293,16 @@ IF data.length > 0:
 
 ## 🌤️ 年度热点 Top 10
 
-1. **GPT-4.5 发布**：推理能力接近人类专家，AI 发展进入新阶段
-2. **Agent Skills 成为行业标准**：Anthropic 规范被广泛采用
-3. **DeepSeek 开源模型爆火**：国产 AI 模型下载量突破 10 亿次
-4. **Google Gemini 2.0 发布**：多模态能力全面超越竞品
-5. **AI Agent 成为年度热词**：各大科技公司押注 Agent 赛道
-6. **欧盟 AI 法案生效**：全球首个 AI 监管框架正式落地
-7. **量子计算与 AI 结合突破**：研究团队实现量子加速 AI 训练
-8. **AI 安全成为全球共识**：各国政府开始制定 AI 安全标准
-9. **开源 AI 社区爆发**：Hugging Face、GitHub 开源项目数创新高
-10. **AI 辅助编程成为主流**：超过 70% 的开发者使用 AI 编程工具
-
+1. [GPT-4.5 发布：推理能力接近人类专家，AI 发展进入新阶段](https://example.com/news/1)
+2. [Agent Skills 成为行业标准：Anthropic 规范被广泛采用](https://example.com/news/2)
+3. [DeepSeek 开源模型爆火：国产 AI 模型下载量突破 10 亿次](https://example.com/news/3)
+4. [Google Gemini 2.0 发布：多模态能力全面超越竞品](https://example.com/news/4)
+5. [AI Agent 成为年度热词：各大科技公司押注 Agent 赛道](https://example.com/news/5)
+6. [欧盟 AI 法案生效：全球首个 AI 监管框架正式落地](https://example.com/news/6)
+7. [量子计算与 AI 结合突破：研究团队实现量子加速 AI 训练](https://example.com/news/7)
+8. [AI 安全成为全球共识：各国政府开始制定 AI 安全标准](https://example.com/news/8)
+9. [开源 AI 社区爆发：Hugging Face、GitHub 开源项目数创新高](https://example.com/news/9)
+10. [AI 辅助编程成为主流：超过 70% 的开发者使用 AI 编程工具](https://example.com/news/10)
 ## 下年展望
 
 2027 年，我希望：
