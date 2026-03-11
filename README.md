@@ -379,7 +379,7 @@ Life Index 遵循 **SSOT（单一事实来源）** 原则：
 
 ## 📜 许可证
 
-Apache License 2.0 - 你的人生数据属于你，这段代码也是。
+[Apache License 2.0](./LICENSE) - 你的人生数据属于你，这段代码也是。
 
 ---
 
