@@ -85,6 +85,8 @@ def _load_yaml_config(config_path: Path) -> Dict[str, Any]:
 
 def _get_env_config() -> Dict[str, Any]:
     """Load configuration from environment variables."""
+    config: Dict[str, Any] = {}
+    """Load configuration from environment variables."""
     config = {}
 
     # Environment variable mappings
@@ -173,6 +175,9 @@ WEATHER_ARCHIVE_URL = get_weather_config()["archive_url"]
 def get_path_mappings() -> Dict[str, str]:
     """Get cross-platform path mappings from config."""
     # Start with config file mappings
+    mappings: Dict[str, str] = USER_CONFIG.get("path_mappings", {})
+    """Get cross-platform path mappings from config."""
+    # Start with config file mappings
     mappings = USER_CONFIG.get("path_mappings", {})
 
     # Example default mappings (disabled by default)
@@ -245,7 +250,7 @@ def get_model_cache_dir() -> Path:
     return cache_base
 
 
-def get_journal_dir(year: int = None, month: int = None) -> Path:
+def get_journal_dir(year: Optional[int] = None, month: Optional[int] = None) -> Path:
     """Get journal directory for given year/month (defaults to current)."""
     now = datetime.now()
     year = year or now.year
@@ -280,7 +285,7 @@ def get_next_sequence(project: str, date_str: str) -> int:
     return max(seq_nums, default=0) + 1
 
 
-def parse_frontmatter(file_path: Path) -> dict:
+def parse_frontmatter(file_path: Path) -> Dict[str, Any]:
     """Parse YAML frontmatter from a markdown file."""
     content = file_path.read_text(encoding="utf-8")
 
@@ -291,7 +296,7 @@ def parse_frontmatter(file_path: Path) -> dict:
         _, fm, body = content.split("---", 2)
         import yaml
 
-        metadata = yaml.safe_load(fm.strip())
+        metadata: Dict[str, Any] = yaml.safe_load(fm.strip()) or {}
         metadata["_body"] = body.strip()
         metadata["_file"] = str(file_path)
         return metadata
@@ -340,7 +345,7 @@ def normalize_path(path: str) -> str:
     return path
 
 
-def get_safe_path(path: str, base_dir: Path = None) -> Path:
+def get_safe_path(path: str, base_dir: Optional[Path] = None) -> Optional[Path]:
     """
     获取安全的路径（防止路径遍历攻击）
 
@@ -351,6 +356,8 @@ def get_safe_path(path: str, base_dir: Path = None) -> Path:
     Returns:
         解析后的 Path 对象，如果路径不安全则返回 None
     """
+    if not path:
+        return None
     if not path:
         return None
 

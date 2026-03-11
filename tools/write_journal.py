@@ -229,7 +229,7 @@ def format_content(data: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def update_topic_index(topic, journal_path: Path, data: Dict[str, Any]) -> List[Path]:
+def update_topic_index(topic: Any, journal_path: Path, data: Dict[str, Any]) -> List[Path]:
     """更新主题索引文件 - 支持单个主题或主题列表"""
     if not topic:
         return []
@@ -270,7 +270,7 @@ def update_topic_index(topic, journal_path: Path, data: Dict[str, Any]) -> List[
     return updated
 
 
-def update_project_index(project: str, journal_path: Path, data: Dict[str, Any]) -> Path:
+def update_project_index(project: str, journal_path: Path, data: Dict[str, Any]) -> Optional[Path]:
     """更新项目索引文件"""
     if not project:
         return None
@@ -404,7 +404,7 @@ def looks_like_file_path(path: str) -> bool:
     return False
 
 
-def process_attachments(attachments: List[Dict[str, str]], date_str: str, dry_run: bool = False, auto_detected_paths: List[str] = None) -> List[Dict[str, str]]:
+def process_attachments(attachments: List[Dict[str, str]], date_str: str, dry_run: bool = False, auto_detected_paths: Optional[List[str]] = None) -> List[Dict[str, Any]]:
     """
     处理附件复制
 
@@ -644,7 +644,7 @@ def write_journal(data: Dict[str, Any], dry_run: bool = False) -> Dict[str, Any]
             "error": str (optional)
         }
     """
-    result = {
+    result: Dict[str, Any] = {
         "success": False,
         "journal_path": None,
         "updated_indices": [],
@@ -880,7 +880,7 @@ def parse_frontmatter(file_path: Path) -> Optional[Dict]:
         return {}
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Life Index - Write Journal Tool",
         formatter_class=argparse.RawDescriptionHelpFormatter,
