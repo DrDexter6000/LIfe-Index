@@ -297,7 +297,7 @@ python tools/generate_abstract.py [options]
   "data": {
     "type": "monthly",
     "period": "2026-03",
-    "output_path": "Journals/2026/03/monthly_report_2026-03.md",
+    "output_path": "Journals/2026/03/monthly_abstract.md",
     "stats": {
       "total_journals": 15,
       "by_topic": {"work": 8, "life": 5, "learn": 2}

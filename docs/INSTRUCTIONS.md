@@ -81,6 +81,20 @@
 | `title` | ✅ | 日志标题（≤20字） |
 | `content` | ✅ | 日志正文内容 |
 | `date` | ✅ | 日期（YYYY-MM-DD，默认当天） |
+| `topic` | ✅ | 主题分类（预定义7类，数组格式如 `["work"]`） |
+| `abstract` | ✅ | 100字内摘要（**Agent生成**，从content提取关键信息） |
+| `location` | ❌ | 地点（如 "Lagos, Nigeria"） |
+| `weather` | ❌ | 天气描述 |
+| `mood` | ❌ | 心情标签数组（如 `["开心", "专注"]`，空则传 `[]`） |
+| `people` | ❌ | 相关人物数组（如 `["张三", "李四"]`，空则传 `[]`） |
+| `project` | ❌ | 关联项目（如 `"Life-Index"`，空则传 `""`） |
+| `tags` | ❌ | 标签数组（如 `["工作", "会议"]`，空则传 `[]`） |
+| `links` | ❌ | 相关链接数组（如 `["https://..."]`，空则传 `[]`） |
+| `attachments` | ❌ | 附件列表，每项包含 `source_path`（路径用正斜杠 `/`）和 `description` |
+|------|------|------|
+| `title` | ✅ | 日志标题（≤20字） |
+| `content` | ✅ | 日志正文内容 |
+| `date` | ✅ | 日期（YYYY-MM-DD，默认当天） |
 | `topic` | ✅ | 主题分类（预定义7类，必填） |
 | `location` | ❌ | 地点（如 "Lagos, Nigeria"） |
 | `weather` | ❌ | 天气描述 |
@@ -93,7 +107,7 @@
 
 **调用示例**:
 ```bash
-python tools/write_journal.py --data '{"title":"...","content":"...","date":"2026-03-07","topic":"work"}'
+python tools/write_journal.py --data '{"title":"...","content":"...","date":"2026-03-07","topic":["work"],"abstract":"...","mood":[],"people":[],"project":"","tags":[],"links":[]}'
 ```
 
 ### search_journals.py

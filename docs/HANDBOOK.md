@@ -173,18 +173,18 @@ Life Index 系统
 ```
 C:\Users\{username}\Documents\Life-Index\
 │
-├── journals\                    # 日志文件主目录
+├── Journals\                    # 日志文件主目录
 │   └── YYYY\                    # 年份目录
 │       ├── yearly_abstract.md    # 年度元数据摘要
 │       └── MM\                  # 月份目录
 │           ├── monthly_abstract.md   # 月度元数据摘要
 │           └── life-index_YYYY-MM-DD_NNN.md   # 日志文件
 │
-├── attachments\                 # 附件存储目录
+├── Attachments\                 # 附件存储目录
 │   └── YYYY\MM\                 # 按年月组织
 │       └── [原始文件名]          # 保持原名的附件文件
 │
-└── by-topic\                    # 主题索引目录
+└── by-topic\                    # 主题索引目录（小写，与代码一致）
     ├── 主题_[topic-id].md        # 各主题的日志索引
     ├── 项目_[project-name].md    # 各项目的日志索引
     └── 标签_[tag-name].md        # 各标签的日志索引
