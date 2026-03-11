@@ -45,6 +45,12 @@ def parse_frontmatter(content: str) -> Tuple[Dict[str, Any], str]:
             key = key.strip()
             value = value.strip()
 
+            # 去除字符串值的引号
+            if value.startswith('"') and value.endswith('"'):
+                value = value[1:-1]
+            elif value.startswith("'") and value.endswith("'"):
+                value = value[1:-1]
+
             # 处理列表格式 [item1, item2]
             if value.startswith('[') and value.endswith(']'):
                 value = [v.strip().strip('"\'') for v in value[1:-1].split(',') if v.strip()]
@@ -843,6 +849,7 @@ Examples:
     parser.add_argument("--topic", help="按主题过滤")
     parser.add_argument("--project", help="按项目过滤")
     parser.add_argument("--tags", help="按标签过滤（逗号分隔）")
+    parser.add_argument("--date", dest="date", help="指定日期 (YYYY-MM-DD)，等效于 --date-from和--date-to设为同一天")
     parser.add_argument("--date-from", help="起始日期 (YYYY-MM-DD)")
     parser.add_argument("--date-to", help="结束日期 (YYYY-MM-DD)")
     parser.add_argument("--location", help="按地点过滤")
@@ -863,6 +870,13 @@ Examples:
     parser.add_argument("--verbose", action="store_true", help="输出详细日志")
 
     args = parser.parse_args()
+
+    # 处理 --date 参数（单日期搜索，等效于 date-from=date-to=该日期）
+    if hasattr(args, 'date') and args.date:
+        if not args.date_from:
+            args.date_from = args.date
+        if not args.date_to:
+            args.date_to = args.date
 
     # 解析标签
     tags = args.tags.split(",") if args.tags else None
