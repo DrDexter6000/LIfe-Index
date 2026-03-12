@@ -55,6 +55,15 @@ Life Index 是一个**个人生活日志系统**：
 
 以下 6 个任务模板基于 **OpenClaw 官方文档** 和 **社区最佳实践** 编写。
 
+**⚠️ 重要提示：时区配置**
+
+以下所有模板中的 `[YOUR_TIMEZONE]` 需要替换为实际时区。配置前请：
+1. 执行 `date +%Z` 或询问用户所在时区
+2. 将 `[YOUR_TIMEZONE]` 替换为实际值（如 `Asia/Shanghai`、`America/New_York`、`UTC`）
+3. 如果不确定，可使用 `UTC` 作为默认
+
+常见时区：中国 `Asia/Shanghai`、美国西部 `America/Los_Angeles`、美国东部 `America/New_York`、UTC `UTC`
+
 ### OpenClaw 定时任务核心概念
 
 **调度类型**:
@@ -91,7 +100,7 @@ openclaw cron rm      # 删除任务
 openclaw cron add \
   --name "Life Index 日报" \
   --cron "0 22 * * *" \
-  --tz "Asia/Shanghai" \
+  --tz "[YOUR_TIMEZONE]" \
   --session isolated \
   --message "执行 Life Index 日报任务：使用 tools/search_journals 查询今日（$(date +%Y-%m-%d)）的日志，生成 200 tokens 以内的摘要推送。如果今日无日志，推送'今日暂无记录'。" \
   --announce
@@ -106,7 +115,7 @@ openclaw cron add \
   "schedule": {
     "kind": "cron",
     "expr": "0 22 * * *",
-    "tz": "Asia/Shanghai"
+    "tz": "[YOUR_TIMEZONE]"
   },
   "sessionTarget": "isolated",
   "payload": {
@@ -131,7 +140,7 @@ openclaw cron add \
 openclaw cron add \
   --name "Life Index 周报" \
   --cron "10 22 * * 0" \
-  --tz "Asia/Shanghai" \
+  --tz "[YOUR_TIMEZONE]" \
   --session isolated \
   --message "执行 Life Index 周报任务：查询本周（周一至周日）的日志，生成本周总结推送。包含：主题分布、核心洞察、高光时刻、趋势观察。约 500 tokens。" \
   --announce
@@ -146,7 +155,7 @@ openclaw cron add \
   "schedule": {
     "kind": "cron",
     "expr": "10 22 * * 0",
-    "tz": "Asia/Shanghai"
+    "tz": "[YOUR_TIMEZONE]"
   },
   "sessionTarget": "isolated",
   "payload": {
@@ -171,7 +180,7 @@ openclaw cron add \
 openclaw cron add \
   --name "Life Index 月报" \
   --cron "30 18 28-31 * *" \
-  --tz "Asia/Shanghai" \
+  --tz "[YOUR_TIMEZONE]" \
   --session isolated \
   --message "执行 Life Index 月报任务：使用 tools/generate_abstract 生成本月摘要文件，并推送摘要内容告知用户文件位置。约 1000 tokens。" \
   --announce
@@ -186,7 +195,7 @@ openclaw cron add \
   "schedule": {
     "kind": "cron",
     "expr": "30 18 28-31 * *",
-    "tz": "Asia/Shanghai"
+    "tz": "[YOUR_TIMEZONE]"
   },
   "sessionTarget": "isolated",
   "payload": {
@@ -211,7 +220,7 @@ openclaw cron add \
 openclaw cron add \
   --name "Life Index 年报" \
   --cron "15 19 31 12 *" \
-  --tz "Asia/Shanghai" \
+  --tz "[YOUR_TIMEZONE]" \
   --session isolated \
   --message "执行 Life Index 年报任务：生成本年度摘要文件，推送年度总结。约 3000 tokens。" \
   --announce
@@ -226,7 +235,7 @@ openclaw cron add \
   "schedule": {
     "kind": "cron",
     "expr": "15 19 31 12 *",
-    "tz": "Asia/Shanghai"
+    "tz": "[YOUR_TIMEZONE]"
   },
   "sessionTarget": "isolated",
   "payload": {
@@ -251,7 +260,7 @@ openclaw cron add \
 openclaw cron add \
   --name "Life Index 每日索引维护" \
   --cron "50 23 * * *" \
-  --tz "Asia/Shanghai" \
+  --tz "[YOUR_TIMEZONE]" \
   --session isolated \
   --message "执行 Life Index 索引维护：运行 tools/build_index.py 更新 FTS 索引和向量索引。此任务静默执行，无需推送。"
 ```
@@ -265,7 +274,7 @@ openclaw cron add \
   "schedule": {
     "kind": "cron",
     "expr": "50 23 * * *",
-    "tz": "Asia/Shanghai"
+    "tz": "[YOUR_TIMEZONE]"
   },
   "sessionTarget": "isolated",
   "payload": {
@@ -290,7 +299,7 @@ openclaw cron add \
 openclaw cron add \
   --name "Life Index 每月索引重建" \
   --cron "30 3 1 * *" \
-  --tz "Asia/Shanghai" \
+  --tz "[YOUR_TIMEZONE]" \
   --session isolated \
   --message "执行 Life Index 全量索引重建：运行 tools/build_index.py --rebuild 全量重建索引。此任务静默执行，无需推送。"
 ```
@@ -304,7 +313,7 @@ openclaw cron add \
   "schedule": {
     "kind": "cron",
     "expr": "30 3 1 * *",
-    "tz": "Asia/Shanghai"
+    "tz": "[YOUR_TIMEZONE]"
   },
   "sessionTarget": "isolated",
   "payload": {
@@ -344,6 +353,37 @@ openclaw cron list
 - OpenClaw 版本: ___________
 - `openclaw cron` 命令是否可用: ✅ / ❌
 - 当前是否有定时任务: 有 ___ 个 / 无
+
+### 3.2 确认时区设置
+
+**重要**: 定时任务使用本地时区执行，错误的时区会导致任务在不期望的时间触发。
+
+**检测你的时区**:
+```bash
+# Linux/Mac
+ls -la /etc/localtime
+cat /etc/timezone 2>/dev/null || echo $TZ
+
+# 或使用 date 命令查看
+date +%Z
+date +%z
+```
+
+**常见时区**:
+- 中国: `Asia/Shanghai`
+- 美国西部: `America/Los_Angeles`
+- 美国东部: `America/New_York`
+- 伦敦: `Europe/London`
+- 东京: `Asia/Tokyo`
+- 悉尼: `Australia/Sydney`
+- UTC: `UTC`
+
+**记录结果**:
+- 你的时区: ___________
+- 或询问用户: "你在哪个时区？"
+
+**注意**: 如果不确定，可以使用 `UTC` 作为默认值，然后根据首次执行结果调整。
+
 
 ### 3.2 确认技能路径
 
@@ -550,7 +590,7 @@ openclaw gateway restart
 **原因**: 时区设置错误或 cron 表达式格式错误
 
 **解决**:
-- 使用 `--tz "Asia/Shanghai"` 明确指定时区
+- 使用 `--tz "[YOUR_TIMEZONE]"` 明确指定时区
 - 使用 [crontab.guru](https://crontab.guru/) 验证表达式
 - 检查系统时间是否正确
 
@@ -597,3 +637,23 @@ openclaw gateway restart
 ---
 
 **文档结束** — 请完成 Step 1-5，为 Life Index 配置定时任务。
+
+---
+
+### ⚠️ 重要提示：时区配置
+
+**以下所有模板中的 `[YOUR_TIMEZONE]` 需要替换为用户的实际时区**。
+
+在配置前，请：
+1. 执行 `date +%Z` 或询问用户所在时区
+2. 将 `[YOUR_TIMEZONE]` 替换为实际值（如 `Asia/Shanghai`、`America/New_York`）
+3. 如果不确定，可使用 `UTC` 作为默认，后续根据实际执行时间调整
+
+常见时区参考：
+- 中国: `Asia/Shanghai`
+- 美国西部: `America/Los_Angeles`
+- 美国东部: `America/New_York`
+- 欧洲: `Europe/London`、`Europe/Paris`
+- 日本: `Asia/Tokyo`
+- UTC: `UTC`
+
