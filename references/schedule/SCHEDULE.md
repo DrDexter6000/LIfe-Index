@@ -3,6 +3,7 @@
 > **本文档角色**: 指导 Agent 为 Life Index 技能配置定时任务  
 > **阅读对象**: AI Agent（OpenClaw / Claude Desktop / 其他支持定时任务的平台）  
 > **版本**: v3.1 Agent-Native Edition | **更新**: 2026-03-13
+> ⚠️ **重要**: Step 2 的 OpenClaw 模板基于通用 Cron 语法和假设格式编写，未经 OpenClaw 官方文档验证。实际使用前请测试验证并根据错误调整。
 
 ---
 
@@ -58,7 +59,7 @@ Life Index 是一个**个人生活日志系统**：
 ```
 技能目录: openclaw/workspace/skills/life-index/
 ```
-（实际路径示例：`Z:\home\dexter\.openclaw\workspace\skills\life-index`）
+（实际路径需要根据你的系统调整）
 
 ---
 
@@ -303,7 +304,7 @@ for t, c in sorted(topics.items(), key=lambda x: -x[1])[:3]:
         └─ 是 → 路径格式与模板一致吗？
                 │
                 ├─ 完全一致（OpenClaw 风格）
-                │   → 直接复制 Step 2 的 6 个任务模板
+                │   → 使用 Step 2 的 6 个任务模板作为起点，根据实际测试调整
                 │
                 └─ 不一致（路径或变量格式不同）
                     → 修改模板中的路径和变量格式
@@ -342,7 +343,7 @@ for t, c in sorted(topics.items(), key=lambda x: -x[1])[:3]:
 
 ### 5.1 如果你是 OpenClaw
 
-直接复制 Step 2 的 6 个 YAML 配置，按顺序在 OpenClaw 定时任务设置中创建。
+参考使用 Step 2 的 6 个 YAML 模板，在 OpenClaw 定时任务设置中创建，并根据实际测试结果调整。
 
 **创建清单**（完成一项勾一项）：
 - [ ] 任务 1: life-index-daily-report (0 22 * * *)
