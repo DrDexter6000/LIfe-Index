@@ -334,7 +334,7 @@ Life Index 遵循 **SSOT（单一事实来源）** 原则：
 | **[INSTRUCTIONS.md](./docs/INSTRUCTIONS.md)** | Agent 执行指令、工作流步骤 | 你是开发者，想实现 Agent 功能 |
 | **[API.md](./docs/API.md)** | 工具 API 接口文档 | 你需要了解工具参数和返回值 |
 | **[CHANGELOG.md](./docs/CHANGELOG.md)** | 重大决策记录、版本演进 | 你想了解项目历史 |
-| **[SCHEDULE.md](./docs/SCHEDULE.md)** | 定时任务配置指南 | 你想设置自动化报告 |
+| **[SCHEDULE.md](./references/schedule/SCHEDULE.md)** | 定时任务配置指南 | 你想设置自动化报告 |
 | **[docs/adr/](./docs/adr/)** | 架构决策记录 (ADR) | 你想了解设计决策背景 |
 | **[references/](./references/)** | 参考文档 (天气流程、错误码) | 你需要深入了解特定流程 |
 | **[CONTRIBUTING.md](./CONTRIBUTING.md)** | 贡献指南 | 你想参与开发 |

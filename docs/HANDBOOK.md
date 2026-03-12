@@ -141,9 +141,9 @@ Life Index 系统
 ├── 核心数据层（不可删除）
 │   ├── journals/          # 日志文件
 │   │   └── YYYY/          # 年份目录
-│   │       ├── yearly_abstract.md   # 年度摘要（位于年份目录）
+│   │       ├── yearly_report_YYYY.md   # 年度摘要（位于年份目录）
 │   │       └── MM/        # 月份目录
-│   │           ├── monthly_abstract.md  # 月度摘要（位于月份目录）
+│   │           ├── monthly_report_YYYY-MM.md  # 月度摘要（位于月份目录）
 │   │           └── life-index_*.md      # 日志文件
 │   └── attachments/       # 附件
 │
@@ -175,9 +175,9 @@ C:\Users\{username}\Documents\Life-Index\
 │
 ├── Journals\                    # 日志文件主目录
 │   └── YYYY\                    # 年份目录
-│       ├── yearly_abstract.md    # 年度元数据摘要
+│       ├── yearly_report_YYYY.md    # 年度元数据摘要
 │       └── MM\                  # 月份目录
-│           ├── monthly_abstract.md   # 月度元数据摘要
+│           ├── monthly_report_YYYY-MM.md   # 月度元数据摘要
 │           └── life-index_YYYY-MM-DD_NNN.md   # 日志文件
 │
 ├── Attachments\                 # 附件存储目录
@@ -195,8 +195,8 @@ C:\Users\{username}\Documents\Life-Index\
 | 文件类型 | 命名格式 | 示例 |
 |----------|----------|------|
 | 日志文件 | `life-index_YYYY-MM-DD_NNN.md` | `life-index_2026-03-03_001.md` |
-| 月度摘要 | `monthly_abstract.md` | （固定名） |
-| 年度摘要 | `yearly_abstract.md` | （固定名） |
+| 月度摘要 | `monthly_report_YYYY-MM.md` | （固定名） |
+| 年度摘要 | `yearly_report_YYYY.md` | （固定名） |
 | 主题索引 | `主题_[id].md` | `主题_work.md` |
 | 项目索引 | `项目_[name].md` | `项目_LobsterAI.md` |
 | 标签索引 | `标签_[name].md` | `标签_meeting.md` |
@@ -209,7 +209,7 @@ C:\Users\{username}\Documents\Life-Index\
 |------|-------------|
 | 日志引用附件 | `../../../Attachments/YYYY/MM/file.jpg` |
 | 索引引用日志 | `../../Journals/YYYY/MM/life-index_...` |
-| 年度摘要引用月度 | `./MM/monthly_abstract.md` |
+| 年度摘要引用月度 | `./MM/monthly_report_YYYY-MM.md` |
 
 **向量索引存储**: `.vector_index/journals_fts.db` (SQLite + sqlite-vec)
 
@@ -217,9 +217,9 @@ C:\Users\{username}\Documents\Life-Index\
 
 ### 5.3 月度/年度摘要格式规范
 
-#### 月度摘要 (`monthly_abstract.md`)
+#### 月度摘要 (`monthly_report_YYYY-MM.md`)
 
-**位置**: `journals/YYYY/MM/monthly_abstract.md`
+**位置**: `journals/YYYY/MM/monthly_report_YYYY-MM.md`
 
 **标准格式**:
 ```markdown
@@ -256,11 +256,11 @@ C:\Users\{username}\Documents\Life-Index\
 - 主题2: N篇
 ```
 
-#### 年度摘要 (`yearly_abstract.md`)
+#### 年度摘要 (`yearly_report_YYYY.md`)
 
-**位置**: `journals/YYYY/yearly_abstract.md`
+**位置**: `journals/YYYY/yearly_report_YYYY.md`
 
-**生成方式**: 读取各月的 `monthly_abstract.md`，汇总元数据视图
+**生成方式**: 读取各月的 `monthly_report_YYYY-MM.md`，汇总元数据视图
 
 **内容结构**:
 - 年度概览（总日志数、覆盖月份）
@@ -363,7 +363,7 @@ final_score = w1×fts_score + w2×vec_score + w3×time_decay
 
 - **职责**: 生成月度/年度摘要
 - **输入**: `--month YYYY-MM` 或 `--year YYYY`
-- **输出**: `Journals/YYYY/MM/monthly_abstract.md` 或 `Journals/YYYY/yearly_abstract.md`
+- **输出**: `Journals/YYYY/MM/monthly_report_YYYY-MM.md` 或 `Journals/YYYY/yearly_report_YYYY.md`
 
 ---
 

@@ -37,6 +37,8 @@ CONFIG_DIR = USER_DATA_DIR / ".life-index"
 CONFIG_FILE = CONFIG_DIR / "config.yaml"
 
 # Note: Abstracts are stored within Journals directory structure:
+#   - Monthly: Journals/YYYY/MM/monthly_report_YYYY-MM.md
+#   - Yearly:  Journals/YYYY/yearly_report_YYYY.md
 #   - Monthly: Journals/YYYY/MM/monthly_abstract.md
 #   - Yearly:  Journals/YYYY/yearly_abstract.md
 # This keeps abstracts co-located with the journals they summarize.

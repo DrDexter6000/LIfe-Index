@@ -154,7 +154,7 @@ def update_monthly_abstract(
     result = {"abstract_path": None, "journal_count": 0, "updated": False}
 
     month_str = f"{year}-{month:02d}"
-    abstract_path = JOURNALS_DIR / str(year) / f"{month:02d}" / "monthly_abstract.md"
+    abstract_path = JOURNALS_DIR / str(year) / f"{month:02d}" / f"monthly_report_{year}-{month:02d}.md"
 
     # 构建命令
     cmd = [
