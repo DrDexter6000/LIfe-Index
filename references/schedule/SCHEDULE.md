@@ -1,134 +1,271 @@
 # Life Index 定时任务指南
 
-> **权威文档**：定义基础概念、核心约束、原则规范，并导航至各场景文档。
-> **版本**：v2.1 | **更新**：2026-03-11
----
-
-## 一、核心约束
-
-| 约束 | 说明 |
-|------|------|
-| **Cron 能力** | 仅使用 Agent 内置 Cron，禁止 OS 级别定时任务 |
-| **时区** | 所有时间使用用户本地时区，非 UTC |
-| **默认行为** | "无数据则跳过" 是所有报告任务的默认行为 |
+> **版本**: v3.0 | **更新**: 2026-03-13  
+> **本文档**: 同时作为**配置手册**（人类阅读）和**执行指令**（Agent定时任务使用）
 
 ---
 
-## 二、基础概念
+## 📋 快速判断：你的 Agent 支持哪种模式？
 
-### 2.1 触发词三级制
+| 如果你的 Agent 支持... | 使用模式 | 跳转章节 |
+|---------------------|---------|---------|
+| 内置定时任务（Cron/Scheduler）+ 可访问技能目录 | **自动模式** | [模式一：定时任务自动配置](#模式一-定时任务自动配置) |
+| 不支持定时任务，或完全隔离环境 | **手动模式** | [模式二：手动定期执行](#模式二-手动定期执行) |
 
-| 类型 | 触发条件 | 行为 |
-|------|---------|------|
-| **Immediate** | 系统时间到达 + 数据条件满足 | 自动执行，无需确认 |
-| **Manual** | 用户明确请求（触发词匹配） | 执行，可选确认 |
-| **Soft** | 用户间接提及 | 询问用户，等待确认 |
+---
 
-### 2.2 STOP 点机制
+## 模式一：定时任务自动配置
 
+### 1.1 OpenClaw 平台配置（推荐）
+
+**路径说明**：假设 Life Index 技能安装在 OpenClaw 工作目录下，相对路径为：
 ```
-⛔ STOP = 前置检查 + 后置记录
+openclaw/workspace/skills/life-index/
+```
+（实际路径如：`Z:\home\dexter\.openclaw\workspace\skills\life-index`）
+
+#### 任务 1：日报推送
+```
+名称: life-index-daily-report
+时间: 0 22 * * * (每天 22:00)
+指令:
 ```
 
-**应用场景**：
-- 推送消息前：验证报告内容完整性
-- 保存文件前：验证路径和格式
-- 执行关键工具前：确认参数
+```bash
+cd openclaw/workspace/skills/life-index && python -m tools.search_journals --date $(date +%Y-%m-%d) --limit 100 --json 2>/dev/null | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+if not data.get('l2_results') and not data.get('merged_results'):
+    print('📭 今日暂无日志记录')
+    sys.exit(0)
 
-### 2.3 Token 预算制
+results = data.get('merged_results', data.get('l2_results', []))
+if not results:
+    print('📭 今日暂无日志记录')
+    sys.exit(0)
 
-| 报告类型 | Token 预算 | 说明 |
-|---------|-----------|------|
-| 日报 | ~200 | 轻量级，快速阅读 |
-| 周报 | ~500 | 中等规模，含热点 |
-| 月报 | ~1000 | 详细报告，保存文件 |
-| 年报 | ~3000 | 深度分析，多维度 |
+print(f'📊 Life Index 日报 ({$(date +%Y-%m-%d)})')
+print(f'今日记录 {len(results)} 篇日志\\n')
+for r in results[:3]:
+    print(f'• {r.get(\"title\", \"无标题\")}')
+if len(results) > 3:
+    print(f'... 还有 {len(results)-3} 篇')
+"
+```
+
+#### 任务 2：周报推送
+```
+名称: life-index-weekly-report
+时间: 10 22 * * 0 (每周日 22:10)
+指令:
+```
+
+```bash
+cd openclaw/workspace/skills/life-index && python -m tools.search_journals --date-from $(date -d '6 days ago' +%Y-%m-%d) --date-to $(date +%Y-%m-%d) --limit 500 --json 2>/dev/null | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+results = data.get('merged_results', data.get('l2_results', []))
+
+week_start = '$(date -d '6 days ago' +%Y-%m-%d)'
+week_end = '$(date +%Y-%m-%d)'
+
+if not results:
+    print(f'📭 {week_start} ~ {week_end} 本周暂无日志')
+    sys.exit(0)
+
+print(f'📊 Life Index 周报 ({week_start} ~ {week_end})')
+print(f'本周共记录 {len(results)} 篇日志\\n')
+
+topics = {}
+for r in results:
+    topic = r.get('metadata', {}).get('topic', ['未分类'])
+    if isinstance(topic, list):
+        topic = topic[0] if topic else '未分类'
+    topics[topic] = topics.get(topic, 0) + 1
+
+print('📈 主题分布:')
+for t, c in sorted(topics.items(), key=lambda x: -x[1])[:3]:
+    print(f'  {t}: {c}篇')
+"
+```
+
+#### 任务 3：月报生成
+```
+名称: life-index-monthly-report
+时间: 30 18 28-31 * * (每月末 18:30)
+指令:
+```
+
+```bash
+cd openclaw/workspace/skills/life-index && python tools/generate_abstract.py --month $(date +%Y-%m) --json 2>/dev/null | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+if isinstance(data, list) and len(data) > 0:
+    d = data[0]
+    print(f'📄 月报已生成: {d.get(\"abstract_path\", \"unknown\")}')
+    print(f'   包含 {d.get(\"journal_count\", 0)} 篇日志')
+elif isinstance(data, dict) and data.get('abstract_path'):
+    print(f'📄 月报已生成: {data.get(\"abstract_path\")}')
+    print(f'   包含 {data.get(\"journal_count\", 0)} 篇日志')
+else:
+    print('⚠️ 月报生成可能失败，请检查')
+"
+```
+
+#### 任务 4：索引维护
+```
+名称: life-index-index-maintenance
+时间: 50 23 * * * (每天 23:50)
+指令:
+```
+
+```bash
+cd openclaw/workspace/skills/life-index && python tools/build_index.py 2>/dev/null && echo "✓ 索引更新完成" || echo "✗ 索引更新失败"
+```
 
 ---
 
-## 三、任务清单
+### 1.2 其他 Agent 平台配置
 
-### 3.1 报告类任务
+如果你的 Agent 不是 OpenClaw，请按以下步骤配置：
 
-| 任务 | 执行时间 | Token 预算 | 输出 | 场景文档 |
-|------|---------|-----------|------|---------|
-| **日报** | 每天 22:00 | ~200 | 推送（主会话+IM渠道） | [daily-report.md](./scenarios/daily-report.md) |
-| **周报** | 每周日 22:10 | ~500 | 推送（主会话+IM渠道） | [weekly-report.md](./scenarios/weekly-report.md) |
-| **月报** | 每月末 18:30 | ~1000 | 文件+推送 | [monthly-report.md](./scenarios/monthly-report.md) |
-| **年报** | 12月31日 19:15 | ~3000 | 文件+推送 | [yearly-report.md](./scenarios/yearly-report.md) |
-### 3.2 索引类任务
-
-| 任务 | 执行时间 | 说明 | 场景文档 |
-|------|---------|------|---------|
-| **每日索引维护** | 每天 23:50 | 检查一致性 + 修复（如需） + 向量增量 | [index-update.md](./scenarios/index-update.md) |
-| **每月索引维护** | 每月1日 03:30 | 全量检查 + 重建（如需） + 向量全量 | [index-rebuild.md](./scenarios/index-rebuild.md) |
----
-
-## 四、场景导航
-
-**根据当前场景，阅读对应的详细文档**：
-
-### 4.1 报告生成场景
-
+#### Step 1: 确定技能路径
+```bash
+# 在你的 Agent 环境中执行，找到 Life Index 安装位置
+find ~ -name "life-index" -type d 2>/dev/null | head -5
+# 或使用 which 找到工具位置
+which python  # 确认 Python 路径
 ```
-用户说："生成日报" / "daily report" / "今日总结"
-  → 阅读 [daily-report.md](./scenarios/daily-report.md)
-用户说："生成周报" / "weekly report" / "本周总结"
-  → 阅读 [weekly-report.md](./scenarios/weekly-report.md)
-用户说："生成月报" / "monthly report"
-  → 阅读 [monthly-report.md](./scenarios/monthly-report.md)
-用户说："生成年报" / "yearly report" / "年度总结"
-  → 阅读 [yearly-report.md](./scenarios/yearly-report.md)
 
-### 4.2 索引维护场景
-
+#### Step 2: 测试基础命令
+在定时任务中先测试是否能执行：
+```bash
+cd [你的技能路径] && python -m tools.search_journals --help
 ```
-到达 23:50（索引增量更新时间）
-  → 阅读 [index-update.md](./scenarios/index-update.md)
-到达 03:30（每月1日，索引全量重建时间）
-  → 阅读 [index-rebuild.md](./scenarios/index-rebuild.md)
+如果失败，说明路径或 Python 环境问题。
+
+#### Step 3: 修改上述模板
+将 `openclaw/workspace/skills/life-index` 替换为你的实际路径。
 
 ---
 
-## 五、工具速查
+## 模式二：手动定期执行
 
-| 工具 | 命令 | 用途 |
-|------|------|------|
-| **搜索日志** | `python tools/search_journals.py --date {DATE}` | 按日期检索 |
-| | `python tools/search_journals.py --month {YYYY-MM}` | 按月份检索 |
-| | `python tools/search_journals.py --year {YYYY}` | 按年份检索 |
-| **生成摘要** | `python tools/generate_abstract.py --month {YYYY-MM}` | 月度摘要 |
-| | `python tools/generate_abstract.py --year {YYYY}` | 年度摘要 |
-| **索引构建** | `python tools/build_index.py` | 增量更新 |
-| | `python tools/build_index.py --rebuild` | 全量重建 |
+如果你的 Agent **不支持定时任务**，或环境**完全隔离**，请使用手动模式：
+
+### 2.1 日报查看（每天睡前）
+
+**用户说**: "查看今日日志" / "今天有什么记录"
+
+**Agent 执行**:
+```bash
+python -m tools.search_journals --date $(date +%Y-%m-%d) --limit 100
+```
+
+### 2.2 周报生成（每周日）
+
+**用户说**: "生成本周报告"
+
+**Agent 执行**:
+```bash
+# 获取本周一到今天
+python -m tools.search_journals --date-from $(date -d '6 days ago' +%Y-%m-%d) --date-to $(date +%Y-%m-%d) --limit 500
+```
+
+### 2.3 月报生成（每月末）
+
+**用户说**: "生成本月总结"
+
+**Agent 执行**:
+```bash
+python tools/generate_abstract.py --month $(date +%Y-%m)
+```
+
+**输出文件位置**:
+- `Journals/YYYY/MM/monthly_report_YYYY-MM.md`
+
+### 2.4 索引维护（偶尔手动）
+
+当搜索变慢或数据不完整时执行：
+
+```bash
+python tools/build_index.py
+```
 
 ---
 
-## 六、错误处理
+## 🔧 故障排查
 
-| 场景 | 处理方式 | 重试策略 |
-|------|---------|---------|
-| 无数据 | 保留元数据占位，报告后询问用户是否补充 | 不重试 |
-| API 失败 | 记录错误，使用默认值 | 下次执行重试 |
-| 文件写入失败 | 先推送内容，提示检查 | 不重试 |
-| 推送失败 | 保存到文件，用户上线展示 | 下次会话展示 |
-| 热点获取失败 | 省略热点部分 | 不重试 |
+### 问题 1："找不到工具" / "No module named tools"
+
+**原因**: 定时任务的执行目录不对
+
+**解决**:
+1. 在指令开头加上 `cd` 命令：
+   ```bash
+   cd openclaw/workspace/skills/life-index && python ...
+   ```
+2. 或者使用绝对路径（从你的实际路径修改）：
+   ```bash
+   python /home/dexter/.openclaw/workspace/skills/life-index/tools/search_journals.py ...
+   ```
+
+### 问题 2：Channel 推送失败
+
+**原因**: Agent 不知道推送到哪个 Channel
+
+**解决**:
+1. **OpenClaw**: 在定时任务设置中选择要推送的 Channel
+2. **其他平台**: 查看平台文档，确认推送方式
+3. **备用方案**: 不依赖推送，改为生成文件并记录路径，用户下次对话时主动告知
+
+### 问题 3："没有今日日志" 但用户说记录过
+
+**原因**: 时区问题，定时任务认为的"今天"和用户时区不同
+
+**解决**:
+- 检查你的 Agent 时区设置
+- 尝试调整定时任务时间（如从 22:00 改为 14:00 测试）
+
+### 问题 4：Cron 表达式不生效
+
+**常见错误**:
+```
+# 错误：秒级精度（Cron 是分钟级）
+0 0 22 * * *  # 6个字段，最后一个是年（可选），秒不支持
+
+# 正确
+0 22 * * *    # 每天 22:00
+```
+
+**验证工具**: 使用在线 Cron 解析器验证表达式。
 
 ---
 
-## 七、文档结构
+## 📊 任务速查表
 
-```
-references/schedule/
-├── SCHEDULE.md                   ← 本文档（Router）
-└── scenarios/                    ← 场景文档（含输出格式）
-    ├── daily-report.md           ← 日报详细指南
-    ├── weekly-report.md          ← 周报详细指南
-    ├── monthly-report.md         ← 月报详细指南
-    ├── yearly-report.md          ← 年报详细指南
-    ├── index-update.md           ← 每日索引维护指南
-    └── index-rebuild.md          ← 每月索引维护指南
-```
+| 任务 | 频率 | Cron | 指令核心 |
+|------|------|------|---------|
+| 日报 | 每天 | `0 22 * * *` | `search_journals --date TODAY` |
+| 周报 | 每周日 | `10 22 * * 0` | `search_journals --date-from 6天前 --date-to 今天` |
+| 月报 | 每月末 | `30 18 28-31 * *` | `generate_abstract --month YYYY-MM` |
+| 索引维护 | 每天 | `50 23 * * *` | `build_index.py` |
+
+**Token 预算参考**:
+- 日报: ~200 tokens
+- 周报: ~500 tokens
+- 月报: ~1000 tokens（只推送摘要，完整内容在文件）
+
+---
+
+## 📁 相关文档
+
+- **日报详细指南**: [scenarios/daily-report.md](./scenarios/daily-report.md)
+- **周报详细指南**: [scenarios/weekly-report.md](./scenarios/weekly-report.md)
+- **月报详细指南**: [scenarios/monthly-report.md](./scenarios/monthly-report.md)
+- **年报详细指南**: [scenarios/yearly-report.md](./scenarios/yearly-report.md)
+- **索引维护指南**: [scenarios/index-update.md](./scenarios/index-update.md)
+
 ---
 
 **文档结束**
