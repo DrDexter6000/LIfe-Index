@@ -10,7 +10,7 @@ import sys
 # Add tools to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "tools"))
 
-from search_journals import parse_frontmatter
+from lib.frontmatter import parse_frontmatter
 
 
 class TestParseFrontmatter:

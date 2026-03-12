@@ -11,12 +11,12 @@ import sys
 # Add tools to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "tools"))
 
-from write_journal import (
+from write_journal.utils import (
     generate_filename,
     get_next_sequence,
-    normalize_location,
-    format_frontmatter,
 )
+from write_journal.weather import normalize_location
+from lib.frontmatter import format_frontmatter
 
 
 class TestGenerateFilename:
@@ -93,7 +93,7 @@ class TestFormatFrontmatter:
         result = format_frontmatter(data)
         assert "---" in result
         assert "date: 2026-03-10" in result
-        assert "location: Beijing, China" in result
+        assert 'location: "Beijing, China"' in result  # 字符串字段带引号
 
     def test_array_format(self):
         """Test arrays are formatted as JSON arrays"""

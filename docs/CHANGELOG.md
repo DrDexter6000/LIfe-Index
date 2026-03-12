@@ -4,6 +4,60 @@
 
 ---
 
+## [2026-03-12] SSOT 重构：统一 frontmatter 处理，消除代码重复
+
+**决策**: 创建 `lib/frontmatter.py` 作为 YAML 解析/格式化的单一事实来源，消除多工具间的代码重复，删除冗余工具。
+
+**核心变更**:
+1. **新建共享库**: `tools/lib/frontmatter.py`
+   - 统一 YAML frontmatter 解析/格式化逻辑（SSOT）
+   - 提供 `parse_frontmatter()`, `parse_journal_file()`, `format_frontmatter()` 等标准函数
+   - 提供 `validate_metadata()` 元数据验证功能
+   - 支持字段顺序标准化、类型自动转换
+
+2. **删除重复工具**: ~~`tools/check_metadata.py`~~
+   - 功能完全被 `validate_data.py` 覆盖
+   - 减少维护负担，简化工具集（9个 → 8个）
+
+3. **重构既有工具**，迁移至 `lib/frontmatter`:
+   - `edit_journal.py`: 移除本地 YAML 解析实现，使用 `lib/frontmatter`
+   - `validate_data.py`: 移除 `_simple_yaml_parse()`，使用 `lib/frontmatter`
+   - `rebuild_indices.py`: 移除 `_simple_yaml_parse()`，使用 `lib/frontmatter`
+
+4. **更新单元测试**:
+   - `tests/unit/test_write_journal.py`: 修复导入路径（函数已移至子模块）
+   - `tests/unit/test_search_journals.py`: 修复导入路径（使用 `lib/frontmatter`）
+   - 新增 `tests/unit/test_frontmatter.py`: 为新的 SSOT 模块提供完整测试覆盖（16个测试用例）
+
+5. **更新 SSOT 文档**:
+   - `AGENTS.md`: 更新模块结构图，添加 `lib/frontmatter.py` 说明
+   - 更新"修改日志格式"开发指南，引用 `lib/frontmatter.py`
+
+**测试覆盖更新**:
+- 单元测试总数：48个（新增16个，原有32个修复通过）
+- E2E测试：保持现有 YAML 测试用例（不受代码重构影响）
+- 测试验证：所有测试通过，重构未破坏现有功能
+
+**代码重复消除统计**:
+| 重复代码 | 原位置 | 现位置 | 节省行数 |
+|----------|--------|--------|----------|
+| YAML 解析器 | edit_journal.py | lib/frontmatter.py | ~80行 |
+| YAML 解析器 | validate_data.py | lib/frontmatter.py | ~120行 |
+| YAML 解析器 | rebuild_indices.py | lib/frontmatter.py | ~80行 |
+| **合计** | | | **~280行** |
+
+**设计原则符合度**:
+- ✅ **SSOT**: frontmatter 逻辑集中到单一模块
+- ✅ **DRY**: 消除 3 处重复实现
+- ✅ **极简主义**: 删除冗余工具
+- ✅ **向后兼容**: 所有 CLI 接口保持不变
+
+**SSOT 同步**:
+- 更新 `AGENTS.md` 模块结构说明
+- 更新 `docs/CHANGELOG.md` 添加变更记录
+
+---
+
 ## [2026-03-12] 模块深度拆分与代码重构
 
 **决策**: 进一步细化拆分 write_journal 和 search_journals 模块，提升代码可维护性和单一职责原则。

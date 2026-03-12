@@ -35,6 +35,11 @@ if str(TOOLS_DIR) not in sys.path:
 
 try:
     from lib.config import JOURNALS_DIR, BY_TOPIC_DIR
+    from lib.frontmatter import (
+        parse_journal_file,
+        format_frontmatter,
+        update_frontmatter_fields,
+    )
 except ImportError:
     PROJECT_ROOT = Path(__file__).parent.parent
     JOURNALS_DIR = PROJECT_ROOT / "journals"
@@ -44,89 +49,13 @@ except ImportError:
 def parse_journal(file_path: Path) -> Tuple[Dict[str, Any], str]:
     """
     解析日志文件，返回 (frontmatter_dict, content_body)
+    使用 lib/frontmatter 模块实现
     """
-    content = file_path.read_text(encoding="utf-8")
-
-    if not content.startswith("---"):
-        return {}, content
-
-    parts = content.split("---", 2)
-    if len(parts) < 3:
-        return {}, content
-
-    fm_content = parts[1].strip()
-    body = parts[2].strip()
-
-    # 解析 YAML frontmatter
-    frontmatter: Dict[str, Any] = {}
-    for line in fm_content.split("\n"):
-        if ":" in line and not line.strip().startswith("#"):
-            key, value = line.split(":", 1)
-            key = key.strip()
-            value = value.strip()
-
-            # 去除引号
-            if (value.startswith('"') and value.endswith('"')) or (
-                value.startswith("'") and value.endswith("'")
-            ):
-                value = value[1:-1]
-
-            # 解析列表
-            if value.startswith("[") and value.endswith("]"):
-                items = value[1:-1].split(",")
-                value = [item.strip().strip("\"'") for item in items if item.strip()]
-
-            frontmatter[key] = value
-
-    return frontmatter, body
+    metadata = parse_journal_file(file_path)
+    return metadata, metadata.get("_body", "")
 
 
-def format_frontmatter(data: Dict[str, Any]) -> str:
-    """格式化 YAML frontmatter"""
-    lines = ["---"]
-
-    field_order = [
-        "title",
-        "date",
-        "location",
-        "weather",
-        "mood",
-        "people",
-        "tags",
-        "project",
-        "topic",
-        "abstract",
-    ]
-
-    # 按顺序输出已知字段
-    for key in field_order:
-        if key in data and data[key] is not None:
-            value = data[key]
-            if isinstance(value, list):
-                if value:
-                    quoted = [f'"{v}"' for v in value]
-                    lines.append("{}: [{}]".format(key, ", ".join(quoted)))
-            elif isinstance(value, str):
-                if value:
-                    lines.append(f'{key}: "{value}"')
-            else:
-                lines.append(f"{key}: {value}")
-
-    # 输出其他字段
-    for key, value in data.items():
-        if key not in field_order and value is not None:
-            if isinstance(value, list):
-                if value:
-                    quoted = [f'"{v}"' for v in value]
-                    lines.append("{}: [{}]".format(key, ", ".join(quoted)))
-            elif isinstance(value, str):
-                if value:
-                    lines.append(f'{key}: "{value}"')
-            else:
-                lines.append(f"{key}: {value}")
-
-    lines.append("---")
-    return "\n".join(lines)
+# format_frontmatter 已移至 lib/frontmatter 模块
 
 
 def remove_from_index(index_file: Path, journal_filename: str) -> bool:
@@ -308,9 +237,12 @@ def edit_journal(
         if not journal_path.exists():
             raise FileNotFoundError(f"日志文件不存在: {journal_path}")
 
-        # 解析现有内容
-        old_frontmatter, old_body = parse_journal(journal_path)
-
+        # 使用 lib/frontmatter 更新
+        # 构建完整数据用于格式化
+        metadata = parse_journal_file(journal_path)
+        old_frontmatter = {k: v for k, v in metadata.items() if not k.startswith("_")}
+        old_body = metadata.get("_body", "")
+        
         # 应用 frontmatter 更新
         new_frontmatter = dict(old_frontmatter)
         for key, value in frontmatter_updates.items():

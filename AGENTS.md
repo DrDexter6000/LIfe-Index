@@ -101,7 +101,7 @@ tools/
 │   ├── __main__.py            # 模块执行入口
 │   ├── core.py                # 核心协调逻辑（~190行）
 │   ├── utils.py               # 通用工具函数
-│   ├── frontmatter.py         # YAML frontmatter格式化
+│   ├── frontmatter.py         # YAML frontmatter格式化（工具专用）
 │   ├── attachments.py         # 附件处理逻辑
 │   ├── weather.py             # 天气查询相关
 │   └── index_updater.py       # 索引更新逻辑
@@ -119,27 +119,12 @@ tools/
 ├── generate_abstract.py       # 生成摘要
 ├── build_index.py             # 构建索引
 ├── query_weather.py           # 查询天气
+├── validate_data.py           # 数据完整性校验（开发工具）
+├── rebuild_indices.py         # 索引重建（开发工具）
 └── lib/                       # 共享库
     ├── config.py              # 配置
     ├── errors.py              # 错误码
-    ├── search_index.py        # 搜索索引
-    ├── semantic_search.py     # 语义搜索
-    └── vector_index_simple.py # 向量索引
-```
-tools/
-├── write_journal/              # 写入日志模块
-│   ├── __init__.py            # CLI入口
-│   └── core.py                # 核心写入逻辑
-├── search_journals/            # 搜索日志模块
-│   ├── __init__.py            # CLI入口
-│   └── core.py                # 核心搜索逻辑
-├── edit_journal.py            # 编辑日志
-├── generate_abstract.py       # 生成摘要
-├── build_index.py             # 构建索引
-├── query_weather.py           # 查询天气
-└── lib/                       # 共享库
-    ├── config.py              # 配置
-    ├── errors.py              # 错误码
+    ├── frontmatter.py         # YAML frontmatter统一解析/格式化（SSOT）
     ├── search_index.py        # 搜索索引
     ├── semantic_search.py     # 语义搜索
     └── vector_index_simple.py # 向量索引
@@ -365,9 +350,10 @@ from tools.write_journal import write_journal
 
 ### 修改日志格式
 
-1. 更新 `tools/write_journal.py` 中的 `format_frontmatter()`
-2. 同步更新 `tools/lib/config.py` 中的模板
-3. 更新 `docs/HANDBOOK.md` 文档
+1. 更新 `tools/write_journal/frontmatter.py` 中的 `format_frontmatter()`
+2. 同步更新 `tools/lib/frontmatter.py` 中的统一解析逻辑
+3. 同步更新 `tools/lib/config.py` 中的模板
+4. 更新 `docs/HANDBOOK.md` 文档
 
 ### 添加 E2E 测试
 
