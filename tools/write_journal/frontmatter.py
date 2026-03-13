@@ -5,7 +5,6 @@ YAML frontmatter 格式化模块
 """
 
 import json
-import warnings
 from pathlib import Path
 from typing import Any, Dict
 
@@ -122,54 +121,3 @@ def format_content(data: Dict[str, Any]) -> str:
         lines.append("")
 
     return "\n".join(lines)
-
-
-def parse_frontmatter(file_path: Path) -> Dict:
-    """解析 YAML frontmatter（简化版，不依赖外部库）
-    
-    .. deprecated:: 
-        此函数已废弃，请使用 lib.frontmatter.parse_frontmatter 或 lib.frontmatter.parse_journal_file
-    """
-    warnings.warn(
-        "parse_frontmatter is deprecated. Use lib.frontmatter.parse_journal_file instead.",
-        DeprecationWarning,
-        stacklevel=2
-    )
-    try:
-        content = file_path.read_text(encoding="utf-8")
-
-        if not content.startswith("---"):
-            return {}
-
-        parts = content.split("---", 2)
-        if len(parts) < 3:
-            return {}
-
-        fm_content = parts[1].strip()
-
-        # 简单解析关键字段
-        result = {}
-        for line in fm_content.split("\n"):
-            if ":" in line:
-                key, value = line.split(":", 1)
-                key = key.strip()
-                value = value.strip()
-
-                # 去除引号
-                if (value.startswith('"') and value.endswith('"')) or (
-                    value.startswith("'") and value.endswith("'")
-                ):
-                    value = value[1:-1]
-
-                # 解析列表
-                if value.startswith("[") and value.endswith("]"):
-                    items = value[1:-1].split(",")
-                    value = [
-                        item.strip().strip("\"'") for item in items if item.strip()
-                    ]
-
-                result[key] = value
-
-        return result
-    except (ValueError, IndexError, IOError, OSError):
-        return {}

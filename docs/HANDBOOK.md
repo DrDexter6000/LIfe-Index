@@ -83,7 +83,6 @@
 | 项目愿景与本手册 | HANDBOOK.md | 本文档 |
 | Agent 执行指令 | INSTRUCTIONS.md | 工具调用、工作流步骤 |
 | 决策变更历史 | CHANGELOG.md | 按日期记录的重大决策 |
-| 开发计划 | Roadmap.md | Phase 划分与里程碑 |
 
 ---
 
@@ -400,7 +399,6 @@ final_score = w1×fts_score + w2×vec_score + w3×time_decay
 | 多人协作 | 单用户设计边界 |
 | 富文本编辑器 | 增加复杂度，Markdown 足够 |
 | 移动端 App | 维护成本高，可用响应式网页替代 |
-| 实时双向 Obsidian 同步 | 增加中间层，违背单层透明原则 |
 | 实时双向 Obsidian 同步 | 增加中间层，违背单层透明原则 |
 
 ### 7.4 性能优化（P3 - 远期）
