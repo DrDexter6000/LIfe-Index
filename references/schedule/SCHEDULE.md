@@ -638,22 +638,3 @@ openclaw gateway restart
 
 **文档结束** — 请完成 Step 1-5，为 Life Index 配置定时任务。
 
----
-
-### ⚠️ 重要提示：时区配置
-
-**以下所有模板中的 `[YOUR_TIMEZONE]` 需要替换为用户的实际时区**。
-
-在配置前，请：
-1. 执行 `date +%Z` 或询问用户所在时区
-2. 将 `[YOUR_TIMEZONE]` 替换为实际值（如 `Asia/Shanghai`、`America/New_York`）
-3. 如果不确定，可使用 `UTC` 作为默认，后续根据实际执行时间调整
-
-常见时区参考：
-- 中国: `Asia/Shanghai`
-- 美国西部: `America/Los_Angeles`
-- 美国东部: `America/New_York`
-- 欧洲: `Europe/London`、`Europe/Paris`
-- 日本: `Asia/Tokyo`
-- UTC: `UTC`
-

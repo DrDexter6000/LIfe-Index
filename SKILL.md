@@ -23,6 +23,9 @@ triggers:
 | 搜索日志 | "查找日志"、"搜索记录"、"找一下关于...的日记"、"search journal"、"find log" |
 | 编辑日志 | "修改日志"、"补充日记"、"更新记录"、"edit journal"、"update log" |
 | 生成摘要 | "生成摘要"、"月度总结"、"年度总结"、"generate summary"、"monthly report" |
+| 生成日报 | "生成日报"、"今日总结"、"daily report" |
+| 生成周报 | "生成周报"、"本周总结"、"weekly report" |
+| 生成年报 | "生成年报"、"年度回顾"、"yearly report" |
 
 # When to Use
 
@@ -30,6 +33,9 @@ triggers:
 2. **搜索日志**：用户说"查找关于...的日志"、"去年春天的记录"、"search for..." → `search_journals.py`
 3. **编辑日志**：用户说"修改昨天的日志"、"补充一下那篇日记"、"edit..." → `edit_journal.py`
 4. **生成摘要**：用户说"生成月度摘要"、"查看年度总结"、"generate summary..." → `generate_abstract.py`
+5. **生成日报**：用户说"生成日报"、"今日总结"、"daily report" → 参考 [SCHEDULE.md](references/schedule/SCHEDULE.md) 日报场景
+6. **生成周报**：用户说"生成周报"、"本周总结"、"weekly report" → 参考 [SCHEDULE.md](references/schedule/SCHEDULE.md) 周报场景
+7. **生成年报**：用户说"生成年报"、"年度回顾"、"yearly report" → 参考 [SCHEDULE.md](references/schedule/SCHEDULE.md) 年报场景
 
 # Tool Invocation
 
@@ -124,6 +130,14 @@ Agent 改成："1. 完成A\n2. 完成B"
 | 工具 | 必填参数 |
 |------|----------|
 | write_journal | title, content, date, abstract |
+
+# Related Documentation
+
+| 文档 | 用途 |
+|------|------|
+| [SCHEDULE.md](references/schedule/SCHEDULE.md) | 定时任务配置（日报/周报/月报/年报/索引维护） |
+| [API.md](docs/API.md) | 工具 API 接口文档 |
+| [WEATHER_FLOW.md](references/WEATHER_FLOW.md) | 天气处理流程 |
 # Output Format
 
 ```json
