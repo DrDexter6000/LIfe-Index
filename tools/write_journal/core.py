@@ -106,14 +106,32 @@ def write_journal(data: Dict[str, Any], dry_run: bool = False) -> Dict[str, Any]
 
         data["weather"] = weather
 
-        # 获取年月和序列号
-        year, month = get_year_month(date_str)
-        sequence = get_next_sequence(date_str)
+        # ===== 原子写入（带重试）=====
+        # 处理并发写入时的序列号冲突
+        max_retries = 3
+        year = 0
+        month = 0
+        journal_path = None
+        month_dir = None
 
-        # 构建路径
-        month_dir = JOURNALS_DIR / str(year) / f"{month:02d}"
-        filename = generate_filename(date_str, sequence)
-        journal_path = month_dir / filename
+        for retry in range(max_retries):
+            # 获取年月和序列号
+            year, month = get_year_month(date_str)
+            sequence = get_next_sequence(date_str)
+
+            # 构建路径
+            month_dir = JOURNALS_DIR / str(year) / f"{month:02d}"
+            filename = generate_filename(date_str, sequence)
+            journal_path = month_dir / filename
+
+            # 如果文件已存在且不是最后一次重试，重新获取序列号
+            if journal_path.exists() and retry < max_retries - 1:
+                continue  # 重试
+            break  # 文件不存在，或最后一次重试直接使用
+
+        # 类型安全断言（循环必定至少执行一次）
+        assert journal_path is not None
+        assert month_dir is not None
 
         # 从内容中自动检测文件路径
         content = data.get("content", "")
@@ -148,7 +166,7 @@ def write_journal(data: Dict[str, Any], dry_run: bool = False) -> Dict[str, Any]
 
         # 2. 使用临时文件进行原子写入
         month_dir.mkdir(parents=True, exist_ok=True)
-        temp_path = journal_path.with_suffix('.tmp')
+        temp_path = journal_path.with_suffix(".tmp")
         try:
             with open(temp_path, "w", encoding="utf-8") as f:
                 f.write(full_content)
@@ -158,7 +176,7 @@ def write_journal(data: Dict[str, Any], dry_run: bool = False) -> Dict[str, Any]
             abstract_error = None
             try:
                 abstract_result = update_monthly_abstract(year, month, dry_run)
-            except Exception as e:
+            except (OSError, IOError, RuntimeError) as e:
                 abstract_error = str(e)
 
             # 4. 更新索引
@@ -177,7 +195,7 @@ def write_journal(data: Dict[str, Any], dry_run: bool = False) -> Dict[str, Any]
                     indices = update_tag_indices(tags, journal_path, data)
                     updated_indices.extend([str(i) for i in indices])
 
-            except Exception as e:
+            except (OSError, IOError, RuntimeError) as e:
                 # 索引更新失败，清理临时文件
                 if temp_path.exists():
                     temp_path.unlink()
@@ -193,7 +211,7 @@ def write_journal(data: Dict[str, Any], dry_run: bool = False) -> Dict[str, Any]
                 result["monthly_abstract_error"] = abstract_error
             result["updated_indices"] = updated_indices
 
-        except Exception:
+        except (OSError, IOError, RuntimeError):
             # 确保临时文件被清理
             if temp_path.exists():
                 temp_path.unlink()

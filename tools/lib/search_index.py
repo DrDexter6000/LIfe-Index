@@ -31,7 +31,7 @@ def get_file_hash(file_path: Path) -> str:
     try:
         content = file_path.read_bytes()
         return hashlib.md5(content).hexdigest()[:16]
-    except Exception:
+    except (OSError, IOError):
         return ""
 
 
@@ -40,6 +40,7 @@ def init_fts_db() -> sqlite3.Connection:
     INDEX_DIR.mkdir(parents=True, exist_ok=True)
 
     conn = sqlite3.connect(str(FTS_DB_PATH))
+    conn.execute("PRAGMA journal_mode=WAL")  # 启用 WAL 模式提升并发性能
     cursor = conn.cursor()
 
     # 创建 FTS5 虚拟表（如果不存在）
@@ -124,7 +125,7 @@ def parse_journal(file_path: Path) -> Optional[Dict[str, Any]]:
 
         return doc
 
-    except Exception as e:
+    except (OSError, IOError, ValueError) as e:
         print(f"Warning: Failed to parse {file_path}: {e}")
         return None
 
@@ -267,7 +268,7 @@ def update_index(incremental: bool = True) -> Dict[str, Any]:
         result["total"] = len(current_files)
         result["success"] = True
 
-    except Exception as e:
+    except (OSError, IOError, sqlite3.Error) as e:
         result["error"] = str(e)
 
     return result
@@ -350,7 +351,7 @@ def search_fts(
 
         conn.close()
 
-    except Exception as e:
+    except (sqlite3.Error, OSError) as e:
         print(f"FTS search error: {e}")
 
     return results
@@ -382,7 +383,7 @@ def get_stats() -> Dict[str, Any]:
 
             conn.close()
 
-    except Exception:
+    except (OSError, IOError, sqlite3.Error):
         pass
 
     return stats

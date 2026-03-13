@@ -86,7 +86,7 @@ def search_l3_content(
                     }
                 )
 
-        except Exception as e:
+        except (OSError, IOError):
             continue
 
     # 按匹配度排序

@@ -83,14 +83,11 @@ def _load_yaml_config(config_path: Path) -> Dict[str, Any]:
             return yaml.safe_load(f) or {}
     except (IOError, OSError, ImportError):
         return {}
-        return {}
 
 
 def _get_env_config() -> Dict[str, Any]:
     """Load configuration from environment variables."""
     config: Dict[str, Any] = {}
-    """Load configuration from environment variables."""
-    config = {}
 
     # Environment variable mappings
     env_mappings = {
@@ -300,7 +297,7 @@ def parse_frontmatter(file_path: Path) -> Dict[str, Any]:
         metadata["_body"] = body.strip()
         metadata["_file"] = str(file_path)
         return metadata
-    except (ValueError, IndexError, yaml.YAMLError):
+    except (ValueError, IndexError):
         return {}
 
 
@@ -358,8 +355,6 @@ def get_safe_path(path: str, base_dir: Optional[Path] = None) -> Optional[Path]:
     """
     if not path:
         return None
-    if not path:
-        return None
 
     # 转换为 Path 对象
     if Path(path).is_absolute():
@@ -383,9 +378,8 @@ def get_safe_path(path: str, base_dir: Optional[Path] = None) -> Optional[Path]:
             if str(resolved) != str(base_resolved) and not str(resolved).startswith(
                 str(base_resolved) + os.sep
             ):
-                # 路径不在 base_dir 内，可能不安全
-                # 但仍然返回路径，让调用者决定如何处理
-                pass
+                # 路径不在 base_dir 内，不安全
+                return None
         except (OSError, ValueError):
             pass
 

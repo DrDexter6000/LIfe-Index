@@ -4,6 +4,37 @@
 
 ---
 
+## [2026-03-13] 代码质量修复：安全性、可靠性、代码清理
+
+**决策**: 基于 CTO 技术评审，修复 P0/P1 级问题，遵循 Agent-First 原则避免过度工程化。
+
+**核心变更**:
+
+1. **安全性修复 (P0)**
+   - `lib/config.py:383-388`: 路径遍历保护修复，检测到不安全路径时返回 `None` 而非继续返回
+   - `write_journal/core.py:109-133`: 序列号竞态修复，添加 3 次重试循环处理并发写入冲突
+
+2. **可靠性优化 (P1)**
+   - `lib/search_index.py:43`, `lib/metadata_cache.py:41`: SQLite 启用 WAL 模式提升并发性能
+
+3. **异常处理规范化 (P1)**
+   - 修复 13 处裸 `except Exception` 为具体异常类型（`OSError`, `IOError`, `sqlite3.Error` 等）
+   - 涉及文件：`search_index.py`, `l1_index.py`, `semantic.py`, `l3_content.py`, `write_journal/core.py`, `search_journals/core.py`
+
+4. **代码清理 (P2)**
+   - 删除 `lib/config.py` 中重复的 `return {}` 和重复的条件检查
+   - 删除重复的模块导入语句
+
+5. **文档修复**
+   - `AGENTS.md`: 删除重复的模块结构代码块和重复的定时任务规范段落
+
+**不做清单** (Agent-First 原则排除):
+- ❌ logging 模块 — Agent 能理解 print + JSON 输出
+- ❌ SQLite 幂等性去重 — 违背单层透明原则，Agent 可"先查后写"
+- ❌ OpenTelemetry/监控 — 单用户本地工具，无需分布式可观测性
+
+**技术债务评级**: B+ → A- (安全性修复后)
+
 ---
 
 ## [2026-03-13] 代码质量修复：SSOT合规、事务保护、L2性能优化

@@ -38,6 +38,7 @@ def init_metadata_cache() -> sqlite3.Connection:
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
     conn = sqlite3.connect(str(METADATA_DB_PATH))
+    conn.execute("PRAGMA journal_mode=WAL")  # 启用 WAL 模式提升并发性能
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 

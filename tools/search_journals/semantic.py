@@ -57,8 +57,8 @@ def search_semantic(
                             "source": "semantic",
                         }
                     )
-    except Exception as e:
-        # 语义搜索失败时返回空列表
+    except (OSError, IOError, ImportError):
+        # 语义搜索失败时返回空列表（可能是模型未安装或文件读取失败）
         pass
 
     return results
@@ -103,7 +103,7 @@ def enrich_semantic_result(semantic_result: Dict) -> Dict:
                 result["topic"] = metadata["topic"]
             if metadata.get("project"):
                 result["project"] = metadata["project"]
-    except Exception:
+    except (OSError, IOError):
         pass  # 读取失败时保持原样
 
     return result

@@ -49,7 +49,7 @@ def scan_all_indices() -> List[Dict[str, Any]]:
                             "source": "index:all",
                         }
                     )
-        except Exception:
+        except (OSError, IOError):
             continue
 
     return results

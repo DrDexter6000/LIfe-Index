@@ -63,17 +63,13 @@ Agent 具备以下原生能力，**禁止开发重复工具**：
 
 **必须使用 Agent 内置 Cron 能力**，禁止 OS 级别定时任务。
 
-定时任务配置详见 [SCHEDULE.md](references/schedule/SCHEDULE.md)。
-
-**必须使用 Agent 内置 Cron 能力**，禁止 OS 级别定时任务：
-
 | 任务类型 | Agent Cron | OS 定时任务 |
 |---------|-----------|-------------|
 | 日报/周报/月报 | ✅ 使用 | ❌ 禁止 |
 | 索引更新 | ✅ 使用 | ❌ 禁止 |
 | 数据清理 | ✅ 使用 | ❌ 禁止 |
 
-定时任务配置见 `references/schedule/SCHEDULE.md`。
+定时任务配置详见 [SCHEDULE.md](references/schedule/SCHEDULE.md)。
 
 ## 构建与运行命令
 
@@ -126,41 +122,6 @@ tools/
     ├── errors.py              # 错误码
     ├── frontmatter.py         # YAML frontmatter统一解析/格式化（SSOT）
     ├── metadata_cache.py      # 元数据缓存（L2搜索性能优化）
-    ├── search_index.py        # 搜索索引
-    ├── semantic_search.py     # 语义搜索
-    └── vector_index_simple.py # 向量索引
-```
-```
-tools/
-├── write_journal/              # 写入日志模块
-│   ├── __init__.py            # CLI入口
-│   ├── __main__.py            # 模块执行入口
-│   ├── core.py                # 核心协调逻辑（~190行）
-│   ├── utils.py               # 通用工具函数
-│   ├── frontmatter.py         # YAML frontmatter格式化（工具专用）
-│   ├── attachments.py         # 附件处理逻辑
-│   ├── weather.py             # 天气查询相关
-│   └── index_updater.py       # 索引更新逻辑
-├── search_journals/            # 搜索日志模块
-│   ├── __init__.py            # CLI入口
-│   ├── __main__.py            # 模块执行入口
-│   ├── core.py                # 核心协调逻辑（~230行）
-│   ├── utils.py               # 通用工具函数
-│   ├── l1_index.py            # 一级索引搜索（by-topic索引）
-│   ├── l2_metadata.py         # 二级元数据搜索（frontmatter扫描）
-│   ├── l3_content.py          # 三级内容搜索（全文搜索）
-│   ├── semantic.py            # 语义搜索相关
-│   └── ranking.py             # 结果排序算法
-├── edit_journal.py            # 编辑日志
-├── generate_abstract.py       # 生成摘要
-├── build_index.py             # 构建索引
-├── query_weather.py           # 查询天气
-├── validate_data.py           # 数据完整性校验（开发工具）
-├── rebuild_indices.py         # 索引重建（开发工具）
-└── lib/                       # 共享库
-    ├── config.py              # 配置
-    ├── errors.py              # 错误码
-    ├── frontmatter.py         # YAML frontmatter统一解析/格式化（SSOT）
     ├── search_index.py        # 搜索索引
     ├── semantic_search.py     # 语义搜索
     └── vector_index_simple.py # 向量索引

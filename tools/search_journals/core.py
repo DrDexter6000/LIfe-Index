@@ -175,7 +175,7 @@ def hierarchical_search(
                     print(
                         f"Debug: FTS found {len(l3_results)} results", file=sys.stderr
                     )
-            except Exception as e:
+            except (ImportError, OSError) as e:
                 print(f"Debug: FTS error: {e}", file=sys.stderr)
                 # FTS 失败时回退到文件系统扫描
                 pass
