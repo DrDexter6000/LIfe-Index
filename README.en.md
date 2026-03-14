@@ -276,13 +276,19 @@ Life-Index/
 
 Simply speak to your Agent:
 
-> "March 5th, 2026, Chongqing, sunny. I want to record my original intention for starting Life Index. This project isn't about building another Notion or Obsidian — it's to help ordinary people like me organize life fragments. I want to record details of my daughter's growth and my feelings as a father, like when she imitated me working on the computer at age two..."
+> "Today I want to record my original intention for starting Life Index. This project isn't about building another Notion or Obsidian — it's to help ordinary people like me organize life fragments. I want to record details of my daughter's growth and my feelings as a father, like when she imitated me working on the computer at age two..."
 
 The Agent will:
-1. Generate a Markdown file with frontmatter
-2. Auto-extract time, location, weather, and tags
-3. Update monthly summaries and topic indexes
-4. Keep it plain text, forever readable
+1. **Auto-fill**: Location (defaults to "Chongqing, China"), weather (auto-queried), time (current timestamp)
+2. **Semantic extraction**: Identify topic, tags, mood, and people from your content
+3. **Generate file**: Create a Markdown file with YAML frontmatter
+4. **Confirm with you**: "Journal saved. Location: Chongqing, China; Weather: Slight rain. Please confirm if correct."
+5. **Update indexes**: Automatically update monthly summaries and topic indexes
+
+**You can also provide information proactively**:
+> "Today I was in Beijing for a meeting, sunny. Discussed the architecture design of Life Index..."
+
+The Agent will use your provided location and weather, skipping the auto-fill step.
 
 ---
 

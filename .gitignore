@@ -39,6 +39,10 @@ nul
 .pytest_cache/
 .coverage
 htmlcov/
+.ruff_cache/
+
+# ----- E2E测试报告 -----
+tests/reports/*.json
 
 # ----- 运行时数据（用户本地生成）-----
 # 注意：这些数据在 ~/Documents/Life-Index/，不在项目目录
@@ -54,8 +58,7 @@ fts_index/
 
 # ----- 开发专用工具（不上传 GitHub）-----
 # 这些工具仅开发使用，发布时排除
-tools/validate_data.py
-tools/rebuild_indices.py
+tools/dev/
 
 # ----- 开发阶段文档 -----
 docs/.dev-archive/

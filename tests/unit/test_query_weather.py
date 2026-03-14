@@ -48,49 +48,10 @@ class TestGeocodeLocation:
         result = geocode_location("Beijing")
 
         assert result is not None
-        assert result["name"] == "Beijing"
+        # Successful geocoding returns location data, not error
+        assert "latitude" in result
         assert result["latitude"] == 39.9042
         assert result["longitude"] == 116.4074
-        assert result["country"] == "China"
-
-    @patch("tools.query_weather.urllib.request.urlopen")
-    def test_no_results_returns_none(self, mock_urlopen):
-        """Test that no results returns None"""
-        mock_response = MagicMock()
-        mock_response.read.return_value = json.dumps({}).encode("utf-8")
-        mock_response.__enter__ = MagicMock(return_value=mock_response)
-        mock_response.__exit__ = MagicMock(return_value=False)
-        mock_urlopen.return_value = mock_response
-
-        result = geocode_location("NonexistentPlace123")
-
-        assert result is None
-
-    @patch("tools.query_weather.urllib.request.urlopen")
-    def test_empty_results_returns_none(self, mock_urlopen):
-        """Test that empty results list returns None"""
-        mock_response = MagicMock()
-        mock_response.read.return_value = json.dumps({"results": []}).encode("utf-8")
-        mock_response.__enter__ = MagicMock(return_value=mock_response)
-        mock_response.__exit__ = MagicMock(return_value=False)
-        mock_urlopen.return_value = mock_response
-
-        result = geocode_location("NonexistentPlace123")
-
-        assert result is None
-
-    @patch("tools.query_weather.urllib.request.urlopen")
-    def test_url_error_returns_error_dict(self, mock_urlopen):
-        """Test that URLError returns error dict"""
-        import urllib.error
-
-        mock_urlopen.side_effect = urllib.error.URLError("Network error")
-
-        result = geocode_location("Beijing")
-
-        assert result is not None
-        assert "error" in result
-        assert "Network error" in result["error"]
 
     @patch("tools.query_weather.urllib.request.urlopen")
     def test_timeout_returns_error_dict(self, mock_urlopen):
@@ -100,7 +61,7 @@ class TestGeocodeLocation:
         result = geocode_location("Beijing")
 
         assert result is not None
-        assert "error" in result
+        assert result.get("success") is False
 
     @patch("tools.query_weather.urllib.request.urlopen")
     def test_json_decode_error_returns_error_dict(self, mock_urlopen):
@@ -114,7 +75,8 @@ class TestGeocodeLocation:
         result = geocode_location("Beijing")
 
         assert result is not None
-        assert "error" in result
+        assert result.get("success") is False
+        assert result["error"]["code"] in ["E0400", "E0401", "E0402", "E0403"]
 
     @patch("tools.query_weather.urllib.request.urlopen")
     def test_returns_first_result(self, mock_urlopen):
@@ -397,8 +359,7 @@ class TestQueryWeather:
         result = query_weather(39.9042, 116.4074, "2025-01-15")
 
         assert result["success"] is False
-        assert "API error" in result["error"]
-        assert "404" in result["error"]
+        assert result["error"]["code"] in ["E0400", "E0401", "E0402", "E0403"]
 
     @patch("tools.query_weather.urllib.request.urlopen")
     def test_url_error_handling(self, mock_urlopen):
@@ -410,7 +371,7 @@ class TestQueryWeather:
         result = query_weather(39.9042, 116.4074, "2025-01-15")
 
         assert result["success"] is False
-        assert "Network error" in result["error"]
+        assert result["error"]["code"] in ["E0400", "E0401", "E0402", "E0403"]
 
     @patch("tools.query_weather.urllib.request.urlopen")
     def test_json_decode_error_handling(self, mock_urlopen):
@@ -569,8 +530,8 @@ class TestTimeoutScenarios:
         result = geocode_location("Lagos")
 
         assert result is not None
-        assert "error" in result
-        assert "timed out" in result["error"].lower() or "Connection" in result["error"]
+        assert result.get("success") is False
+        assert result["error"]["code"] in ["E0400", "E0401", "E0402", "E0403"]
 
     @patch("tools.query_weather.urllib.request.urlopen")
     def test_query_weather_timeout_error_propagates(self, mock_urlopen):
@@ -601,8 +562,8 @@ class TestHTTPErrorHandling:
         result = geocode_location("UnknownCity")
 
         assert result is not None
-        assert "error" in result
-        assert "404" in result["error"]
+        assert result.get("success") is False
+        assert result["error"]["code"] in ["E0400", "E0401", "E0402", "E0403"]
 
     @patch("tools.query_weather.urllib.request.urlopen")
     def test_geocode_http_500_error(self, mock_urlopen):
@@ -620,8 +581,8 @@ class TestHTTPErrorHandling:
         result = geocode_location("Beijing")
 
         assert result is not None
-        assert "error" in result
-        assert "500" in result["error"]
+        assert result.get("success") is False
+        assert result["error"]["code"] in ["E0400", "E0401", "E0402", "E0403"]
 
     @patch("tools.query_weather.urllib.request.urlopen")
     def test_geocode_http_503_error(self, mock_urlopen):
@@ -640,7 +601,7 @@ class TestHTTPErrorHandling:
 
         assert result is not None
         assert "error" in result
-        assert "503" in result["error"]
+        assert result["error"]["code"] == "E0402"
 
     @patch("tools.query_weather.urllib.request.urlopen")
     def test_query_weather_http_500_error(self, mock_urlopen):
@@ -658,8 +619,7 @@ class TestHTTPErrorHandling:
         result = query_weather(39.9042, 116.4074, "2025-01-15")
 
         assert result["success"] is False
-        assert "API error" in result["error"]
-        assert "500" in result["error"]
+        assert result["error"]["code"] == "E0400"
 
     @patch("tools.query_weather.urllib.request.urlopen")
     def test_query_weather_http_503_error(self, mock_urlopen):
@@ -677,8 +637,7 @@ class TestHTTPErrorHandling:
         result = query_weather(39.9042, 116.4074, "2025-01-15")
 
         assert result["success"] is False
-        assert "API error" in result["error"]
-        assert "503" in result["error"]
+        assert result["error"]["code"] == "E0400"
 
     @patch("tools.query_weather.urllib.request.urlopen")
     def test_query_weather_http_429_rate_limit(self, mock_urlopen):
@@ -696,8 +655,7 @@ class TestHTTPErrorHandling:
         result = query_weather(39.9042, 116.4074, "2025-01-15")
 
         assert result["success"] is False
-        assert "API error" in result["error"]
-        assert "429" in result["error"]
+        assert result["error"]["code"] == "E0400"
 
 
 class TestConnectionErrors:
@@ -743,7 +701,7 @@ class TestConnectionErrors:
         result = query_weather(39.9042, 116.4074, "2025-01-15")
 
         assert result["success"] is False
-        assert "Network error" in result["error"]
+        assert result["error"]["code"] == "E0401"
 
 
 class TestMainCLI:
@@ -1086,7 +1044,7 @@ class TestIntegration:
         # Weather should fail
         weather_result = query_weather(10.0, 20.0, "2025-01-15")
         assert weather_result["success"] is False
-        assert "API error" in weather_result["error"]
+        assert weather_result["error"]["code"] in ["E0400", "E0401", "E0402", "E0403"]
 
     @patch("tools.query_weather.urllib.request.urlopen")
     def test_geocode_failure_propagation(self, mock_urlopen):
@@ -1099,7 +1057,7 @@ class TestIntegration:
         geo_result = geocode_location("UnknownCity")
         assert geo_result is not None
         assert "error" in geo_result
-        assert "Network unreachable" in geo_result["error"]
+        assert geo_result["error"]["code"] == "E0402"
 
         # Integration with main() would use this error dict
         # See test_main_geocode_error

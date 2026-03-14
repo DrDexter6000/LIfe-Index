@@ -22,6 +22,7 @@ from typing import Dict, List, Optional, Any
 from ..lib.config import JOURNALS_DIR, ensure_dirs
 from ..lib.logger import get_logger
 from ..lib.frontmatter import parse_journal_file
+from ..lib.errors import ErrorCode, create_error_response
 
 logger = get_logger(__name__)
 
@@ -338,92 +339,122 @@ def generate_monthly_abstract(
     year: int, month: int, dry_run: bool = False
 ) -> Dict[str, Any]:
     """生成月度摘要文件"""
-    result = {
+    result: Dict[str, Any] = {
+        "success": False,
         "type": "monthly",
         "year": year,
         "month": month,
         "abstract_path": None,
         "journal_count": 0,
         "updated": False,
+        "error": None,
     }
 
-    month_dir = JOURNALS_DIR / str(year) / f"{month:02d}"
-    abstract_path = month_dir / f"monthly_report_{year}-{month:02d}.md"
+    try:
+        month_dir = JOURNALS_DIR / str(year) / f"{month:02d}"
+        abstract_path = month_dir / f"monthly_report_{year}-{month:02d}.md"
 
-    # 收集该月所有日志
-    journals = collect_month_journals(year, month)
-    result["journal_count"] = len(journals)
+        # 收集该月所有日志
+        journals = collect_month_journals(year, month)
+        result["journal_count"] = len(journals)
 
-    if not journals:
-        logger.info(f"{year}年{month:02d}月没有日志记录")
-        result["message"] = f"{year}年{month:02d}月没有日志记录"
-        return result
+        if not journals:
+            logger.info(f"{year}年{month:02d}月没有日志记录")
+            result["success"] = True  # Not an error, just empty
+            result["message"] = f"{year}年{month:02d}月没有日志记录"
+            return result
 
-    # 生成月度摘要内容
-    content = generate_monthly_abstract_content(year, month, journals)
-    result["abstract_path"] = str(abstract_path)
+        # 生成月度摘要内容
+        content = generate_monthly_abstract_content(year, month, journals)
+        result["abstract_path"] = str(abstract_path)
 
-    if dry_run:
-        logger.info(f"[预览] 将生成月度摘要：{abstract_path}")
-        result["message"] = f"[预览] 将生成月度摘要：{abstract_path}"
-        return result
+        if dry_run:
+            logger.info(f"[预览] 将生成月度摘要：{abstract_path}")
+            result["success"] = True
+            result["message"] = f"[预览] 将生成月度摘要：{abstract_path}"
+            return result
 
-    # 确保目录存在
-    month_dir.mkdir(parents=True, exist_ok=True)
+        # 确保目录存在
+        month_dir.mkdir(parents=True, exist_ok=True)
 
-    # 写入摘要文件
-    logger.debug(f"写入月度摘要：{abstract_path}")
-    with open(abstract_path, "w", encoding="utf-8") as f:
-        f.write(content)
+        # 写入摘要文件
+        logger.debug(f"写入月度摘要：{abstract_path}")
+        with open(abstract_path, "w", encoding="utf-8") as f:
+            f.write(content)
 
-    result["updated"] = True
-    result["message"] = f"月度摘要已保存：{abstract_path}"
-    logger.info(f"月度摘要已保存：{abstract_path}")
+        result["updated"] = True
+        result["success"] = True
+        result["message"] = f"月度摘要已保存：{abstract_path}"
+        logger.info(f"月度摘要已保存：{abstract_path}")
+
+    except (IOError, OSError) as e:
+        logger.error(f"写入月度摘要失败：{e}")
+        return create_error_response(
+            ErrorCode.WRITE_FAILED,
+            f"写入月度摘要失败：{e}",
+            {"year": year, "month": month},
+            "请检查目录权限或磁盘空间",
+        )
 
     return result
 
 
 def generate_yearly_abstract(year: int, dry_run: bool = False) -> Dict[str, Any]:
     """生成年度摘要文件"""
-    result = {
+    result: Dict[str, Any] = {
+        "success": False,
         "type": "yearly",
         "year": year,
         "abstract_path": None,
         "journal_count": 0,
         "updated": False,
+        "error": None,
     }
 
-    abstract_path = JOURNALS_DIR / str(year) / f"yearly_report_{year}.md"
+    try:
+        abstract_path = JOURNALS_DIR / str(year) / f"yearly_report_{year}.md"
 
-    # 收集该年所有日志
-    journals = collect_year_journals(year)
-    result["journal_count"] = len(journals)
+        # 收集该年所有日志
+        journals = collect_year_journals(year)
+        result["journal_count"] = len(journals)
 
-    if not journals:
-        logger.info(f"{year}年没有日志记录")
-        result["message"] = f"{year}年没有日志记录"
-        return result
+        if not journals:
+            logger.info(f"{year}年没有日志记录")
+            result["success"] = True  # Not an error, just empty
+            result["message"] = f"{year}年没有日志记录"
+            return result
 
-    # 生成年度摘要内容
-    content = generate_yearly_abstract_content(year, journals)
-    result["abstract_path"] = str(abstract_path)
+        # 生成年度摘要内容
+        content = generate_yearly_abstract_content(year, journals)
+        result["abstract_path"] = str(abstract_path)
 
-    if dry_run:
-        logger.info(f"[预览] 将生成年度摘要：{abstract_path}")
-        result["message"] = f"[预览] 将生成年度摘要：{abstract_path}"
-        return result
+        if dry_run:
+            logger.info(f"[预览] 将生成年度摘要：{abstract_path}")
+            result["success"] = True
+            result["message"] = f"[预览] 将生成年度摘要：{abstract_path}"
+            return result
 
-    # 确保目录存在
-    abstract_path.parent.mkdir(parents=True, exist_ok=True)
+        # 确保目录存在
+        abstract_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # 写入摘要文件
-    logger.debug(f"写入年度摘要：{abstract_path}")
-    with open(abstract_path, "w", encoding="utf-8") as f:
-        f.write(content)
+        # 写入摘要文件
+        logger.debug(f"写入年度摘要：{abstract_path}")
+        with open(abstract_path, "w", encoding="utf-8") as f:
+            f.write(content)
 
-    result["updated"] = True
-    result["message"] = f"年度摘要已保存：{abstract_path}"
-    logger.info(f"年度摘要已保存：{abstract_path}")
+        result["updated"] = True
+        result["success"] = True
+        result["message"] = f"年度摘要已保存：{abstract_path}"
+        logger.info(f"年度摘要已保存：{abstract_path}")
+
+    except (IOError, OSError) as e:
+        logger.error(f"写入年度摘要失败：{e}")
+        return create_error_response(
+            ErrorCode.WRITE_FAILED,
+            f"写入年度摘要失败：{e}",
+            {"year": year},
+            "请检查目录权限或磁盘空间",
+        )
 
     return result
 

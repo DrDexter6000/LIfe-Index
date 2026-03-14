@@ -155,16 +155,45 @@ python tools/generate_abstract.py --year 2026
 
 ### 工作流1: 记录日志
 
-1. **语义解析**：从用户输入提取 content/mood/topic/project
-2. **确认地点和天气**：如未提供，询问用户
-3. **分支处理**：
-   - 用户提供完整地址+天气 → 直接使用
-   - 仅提供地点 → 常识补全国家 → 调用 query_weather
-   - 均未提供 → 默认 Chongqing, China → 调用 query_weather
-4. **调用工具**：write_journal.py
-5. **向用户确认**
+#### 元数据完整性规则
 
-**常识映射表**：
+**所有日志必须包含完整的元数据字段，即使值为空。**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|:----:|------|
+| title | string | ✅ | 日志标题 |
+| content | string | ✅ | 日志正文（100%原样保留） |
+| date | string | ✅ | ISO 8601 日期时间 |
+| abstract | string | ✅ | ≤100字摘要（Agent生成） |
+| topic | array | ✅ | 主题分类，必填（如["work"]） |
+| mood | array | ✅ | 心情标签，必填，Agent语义提取1~3个（如["开心","专注"]） |
+| tags | array | ✅ | 标签，必填，Agent语义提取关键词（可多个） |
+| location | string | ❌ | 地点，默认"Chongqing, China"，Agent询问后可更改 |
+| weather | string | ❌ | 天气，根据确认的地点自动查询 |
+| people | array | ❌ | 相关人物，Agent语义提取，没有则留空 |
+| project | string | ❌ | 关联项目，Agent语义提取，没有则留空 |
+| links | array | ❌ | 相关链接 |
+| attachments | array | ❌ | 附件路径（自动检测） |
+
+**Agent 职责**：
+1. **必填字段**：title, content, date, abstract, topic, mood, tags — 必须有值
+2. **语义提取**：从用户内容中主动提取 mood（1~3个）、tags（关键词）、people、project
+3. **默认值**：location 默认 "Chongqing, China"，Agent可主动询问用户确认更改
+4. **空值处理**：people, project, links 未提取到时传空值（如 `"people": []`）
+5. **摘要生成**：从 content 提取关键信息，生成 ≤100 字的 abstract
+
+#### 天气处理三层机制
+
+详见 [WEATHER_FLOW.md](../references/WEATHER_FLOW.md)
+
+| 层级 | 场景 | 处理方式 |
+|:----:|------|---------|
+| 1 | 用户提供地点+天气 | 直接使用 |
+| 2 | 用户未提供 | 自动填充默认地点 "Chongqing, China" + 查询天气 |
+| 3 | 写入后 | **必须**确认地点和天气，展示 `confirmation_message` |
+| 4 | API 失败 | Agent 使用网络搜索 Fallback（Agent-First 原则） |
+
+**常识映射表**（地点补全）：
 | 用户输入 | 补全结果 |
 |---------|---------|
 | Lagos | Lagos, Nigeria |
@@ -174,27 +203,100 @@ python tools/generate_abstract.py --year 2026
 | New York | New York, USA |
 | London | London, UK |
 
+#### 工作流步骤
+
+1. **语义解析**：从用户输入提取 title/content/date/topic
+2. **提取元数据**：从 content 中识别 mood、people、tags、project
+3. **生成摘要**：从 content 中提取关键信息，生成 ≤100 字的 abstract
+4. **处理地点和天气**：
+   - 用户提供 → 直接使用
+   - 用户未提供 → 自动填充默认地点 + 查询天气
+5. **调用工具**：`write_journal`（**必须包含所有元数据字段**）
+   - **附件自动处理**：工具自动检测 content 中的本地文件路径，复制到 `attachments/YYYY/MM/`
+6. **检查 `needs_confirmation`**
+7. **展示确认信息**：询问用户确认地点和天气
+8. **天气查询失败时**：使用网络搜索 Fallback
+
 ### 工作流2: 检索日志
+
+#### 四层搜索架构
+
+| 层级 | 名称 | 适用场景 | 性能 |
+|:----:|------|---------|------|
+| L1 | 索引层 (by-topic/) | 有明确 topic/project/tag | < 10ms |
+| L2 | 元数据层 (frontmatter) | 有时间/地点/天气等结构化过滤 | < 50ms |
+| L3 | 全文层 (FTS5) | 需要全文检索（默认） | < 50ms |
+| L4 | 语义层 (向量) | 需要语义匹配 | 可选启用 |
+
+#### 工作流步骤
 
 1. **解析查询意图**：识别 time_range/metadata/fulltext/compound
 2. **选择搜索层级**：
    - Level 1：有明确 topic/project/tag
    - Level 2：有时间/地点等元数据
    - Level 3：需要全文检索（默认）
-3. **执行搜索**：search_journals.py
-4. **呈现结果**
+   - Level 4：需要语义匹配（`--semantic`）
+3. **执行搜索**：`search_journals`
+4. **呈现结果**：展示匹配的日志列表
+
+#### 搜索参数速查
+
+```bash
+# 基础搜索
+python -m tools.search_journals --query "关键词" --level 3
+
+# 按元数据过滤
+python -m tools.search_journals --topic work --project Life-Index --date-from 2026-01-01
+
+# 语义搜索（需安装 sentence-transformers）
+python -m tools.search_journals --query "学习笔记" --semantic
+```
 
 ### 工作流3: 编辑日志
 
+#### 工作流步骤
+
 1. **定位日志**：根据日期或标题找到目标文件
 2. **确认修改**：展示当前内容，明确修改范围
-3. **执行编辑**：edit_journal.py
+3. **执行编辑**：`edit_journal`
+4. **如修改地点**：需先调用 `query_weather` 获取新天气
+
+#### 编辑参数速查
+
+```bash
+# 更新地点（需要先查询天气）
+python -m tools.query_weather --location "Beijing,China"
+python -m tools.edit_journal --journal "Journals/2026/03/life-index_2026-03-14_001.md" --set-location "Beijing, China" --set-weather "晴天 25°C"
+
+# 追加内容
+python -m tools.edit_journal --journal "Journals/2026/03/life-index_2026-03-14_001.md" --append-content "后续补充的内容..."
+
+# 更新主题
+python -m tools.edit_journal --journal "Journals/2026/03/life-index_2026-03-14_001.md" --set-topic "learn"
+```
 
 ### 工作流4: 生成摘要
 
+#### 工作流步骤
+
 1. **确定类型**：月度摘要或年度摘要
-2. **执行生成**：generate_abstract.py
+2. **执行生成**：`generate_abstract`
 3. **返回结果**：告知文件路径和统计信息
+
+#### 摘要参数速查
+
+```bash
+# 月度摘要
+python -m tools.generate_abstract --month 2026-03
+# 输出: Journals/2026/03/monthly_report_2026-03.md
+
+# 年度摘要
+python -m tools.generate_abstract --year 2026
+# 输出: Journals/2026/yearly_report_2026.md
+
+# 批量生成全年月度摘要
+python -m tools.generate_abstract --year 2026 --all-months
+```
 
 ---
 

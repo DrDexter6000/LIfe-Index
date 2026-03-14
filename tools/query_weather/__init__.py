@@ -21,6 +21,7 @@ from typing import Dict, Optional, Any
 
 from ..lib.logger import get_logger
 from ..lib.config import ensure_dirs
+from ..lib.errors import ErrorCode, create_error_response
 
 logger = get_logger(__name__)
 
@@ -76,7 +77,13 @@ def geocode_location(location: str) -> Optional[Dict[str, Any]]:
         TimeoutError,
     ) as e:
         logger.error(f"Geocoding failed: {e}")
-        return {"error": str(e)}
+        # Return structured error response
+        return create_error_response(
+            ErrorCode.LOCATION_NOT_FOUND,
+            f"无法找到地点：{location}",
+            {"location": location, "error": str(e)},
+            "请检查地点名称是否正确，或使用英文格式（如 'Beijing,China'）",
+        )
 
 
 def get_weather_code_description(code: int) -> str:
@@ -220,13 +227,28 @@ def query_weather(
 
     except urllib.error.HTTPError as e:
         logger.error(f"Weather API error: {e.code} - {e.reason}")
-        result["error"] = f"API error: {e.code} - {e.reason}"
+        return create_error_response(
+            ErrorCode.WEATHER_API_FAILED,
+            f"天气API错误：{e.code} - {e.reason}",
+            {"date": date, "lat": latitude, "lon": longitude},
+            "请稍后重试，或手动输入天气信息",
+        )
     except urllib.error.URLError as e:
         logger.error(f"Weather network error: {e.reason}")
-        result["error"] = f"Network error: {e.reason}"
+        return create_error_response(
+            ErrorCode.WEATHER_TIMEOUT,
+            f"网络错误：{e.reason}",
+            {"date": date, "lat": latitude, "lon": longitude},
+            "请检查网络连接，或手动输入天气信息",
+        )
     except (json.JSONDecodeError, KeyError, IndexError) as e:
         logger.error(f"Weather data parsing error: {e}")
-        result["error"] = str(e)
+        return create_error_response(
+            ErrorCode.WEATHER_PARSE_ERROR,
+            f"天气数据解析错误：{e}",
+            {"date": date, "lat": latitude, "lon": longitude},
+            "请手动输入天气信息",
+        )
 
     return result
 

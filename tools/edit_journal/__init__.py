@@ -232,7 +232,21 @@ def edit_journal(
 
         if not journal_path.exists():
             logger.error(f"日志文件不存在：{journal_path}")
-            raise FileNotFoundError(f"日志文件不存在：{journal_path}")
+            return create_error_response(
+                ErrorCode.JOURNAL_NOT_FOUND,
+                f"日志文件不存在：{journal_path}",
+                {"path": str(journal_path)},
+                "请检查文件路径是否正确",
+            )
+
+        if not frontmatter_updates and not append_content and not replace_content:
+            logger.warning("未指定任何修改")
+            return create_error_response(
+                ErrorCode.NO_CHANGES_SPECIFIED,
+                "未指定任何修改内容",
+                None,
+                "请使用 --set-*, --append-content 或 --replace-content 指定修改",
+            )
 
         # 使用 lib-frontmatter 更新
         # 构建完整数据用于格式化
@@ -316,9 +330,14 @@ def edit_journal(
         result["success"] = True
         logger.info(f"编辑完成：{journal_path.name}")
 
-    except Exception as e:
-        logger.error(f"编辑失败：{e}")
-        result["error"] = str(e)
+    except (IOError, OSError) as e:
+        logger.error(f"文件操作失败：{e}")
+        return create_error_response(
+            ErrorCode.WRITE_FAILED,
+            f"文件操作失败：{e}",
+            {"path": str(journal_path)},
+            "请检查文件权限或磁盘空间",
+        )
 
     return result
 
