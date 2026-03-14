@@ -192,25 +192,57 @@ Want to find "all my melancholic memories about Tuantuan"? Search `Tuantuan` + `
 
 ## 🚀 Quick Start
 
-### Prerequisites
-- An AI Agent with file operation capabilities (e.g., Openclaw, Lobster AI)
-- A local directory (suggested: `~/Documents/Life-Index`)
+### Option 1: Agent Users (Recommended)
 
-### Installing Dependencies
+If you use OpenClaw, Lobster AI, or other Agent Skill platforms:
 
-**Required:**
-- Python 3.11+ (runtime environment for core tools)
+1. **No installation required** - Simply tell your Agent:
+   > "Please read docs/INSTRUCTIONS.md and act as my Life Index journal assistant."
 
-**Optional:**
+2. **Auto-initialization** - The Agent will automatically create the data directory:
+   - Windows: `C:\Users\<username>\Documents\Life-Index\`
+   - macOS/Linux: `~/Documents/Life-Index/`
+
+3. **Start journaling** - Simply begin recording:
+   > "Today I want to record..."
+
+### Option 2: Developers / Advanced Users
+
+If you want to use CLI tools directly or contribute to development:
+
+**1. Prerequisites**
+- Python 3.11+ (core tools runtime)
+- Git (to clone the repository)
+
+**2. Installation**
 ```bash
-# Install semantic search dependencies (recommended)
-pip install -r tools/requirements.txt
+# Clone the repository
+git clone https://github.com/yourusername/life-index.git
+cd life-index
 
-# Or install manually
-pip install sentence-transformers
+# Install dependencies (includes semantic search)
+pip install -e .
+
+# Or install with dev dependencies (includes testing tools)
+pip install -e ".[dev]"
 ```
 
-> **Note:** `sentence-transformers` powers the semantic search feature. If not installed, the system will automatically skip vector indexing — full-text search (FTS5) remains fully functional.
+**3. Verify Installation**
+```bash
+# Check if tools are working
+python -m tools.query_weather --location "Beijing,China"
+
+# Expected output: JSON with weather information
+```
+
+**4. Data Directory**
+Created automatically on first run:
+```
+~/Documents/Life-Index/
+├── Journals/          # Main journal directory
+├── attachments/       # Attachments storage
+└── by-topic/          # Auto-generated indexes
+```
 
 ### Automation and Scheduled Tasks
 
@@ -262,7 +294,7 @@ Life Index provides a complete set of CLI tools for developers or advanced users
 
 ```bash
 # Write journal entry
-python tools/write_journal.py --data '{
+python -m tools.write_journal --data '{
   "date": "2026-03-07",
   "title": "Completed search optimization",
   "content": "Today I optimized Life Index's search functionality...",
@@ -274,22 +306,25 @@ python tools/write_journal.py --data '{
 }'
 
 # Search journals (full-text)
-python tools/search_journals.py --query "Refactoring" --level 3
+python -m tools.search_journals --query "Refactoring" --level 3
 
 # Search journals (semantic search)
-python tools/search_journals.py --query "Study notes" --semantic
+python -m tools.search_journals --query "Study notes" --semantic
 
 # Multi-dimensional filtered search
-python tools/search_journals.py --topic work --mood "Focused,Fulfilled" --people "Tuantuan"
+python -m tools.search_journals --topic work --mood "Focused,Fulfilled" --people "Tuantuan"
 
 # Generate monthly summary
-python tools/generate_abstract.py --month 2026-03
+python -m tools.generate_abstract --month 2026-03
 
 # Generate annual summary
-python tools/generate_abstract.py --year 2026
+python -m tools.generate_abstract --year 2026
 
 # Update search index
-python tools/build_index.py
+python -m tools.build_index
+
+# Query weather
+python -m tools.query_weather --location "Beijing,China"
 ```
 
 ### Technical Features
@@ -302,6 +337,7 @@ python tools/build_index.py
 | **Index Architecture** | L1 Index Layer → L2 Metadata Layer → L3 Content Layer, balancing speed and precision |
 | **Hybrid Ranking** | Weighted hybrid ranking of FTS + semantic search (default FTS 0.6 + Semantic 0.4) |
 | **Data Isolation** | All user data stored in `~/Documents/Life-Index/`, physically isolated from Skill directory |
+| **Test Coverage** | 336+ unit tests, 48% code coverage (continuously improving) |
 
 ### API Interface
 
@@ -349,6 +385,39 @@ We deliberately DON'T do:
 - ❌ Rich text editing (Markdown is enough to express "Missing the Diaper Hero")
 - ❌ Real-time collaboration (This is YOUR life, not a team's)
 - ❌ AI auto-summarization (We index, but we don't think for you)
+
+---
+
+## 🔧 Troubleshooting
+
+### Journals not written to ~/Documents/Life-Index/
+**Symptom**: Logs appear in the Agent's working directory  
+**Cause**: Path configuration issue in older versions  
+**Solution**: Update to the latest version, ensure you use `python -m tools.xxx` instead of `python tools/xxx.py`
+
+### Semantic search unavailable
+**Symptom**: `--semantic` parameter has no effect  
+**Cause**: sentence-transformers not installed  
+**Solution**: `pip install sentence-transformers`
+
+### Permission Denied errors
+**Symptom**: Permission denied when writing journals  
+**Cause**: Data directory permission issues  
+**Solution**:
+```bash
+# Windows: Run terminal as administrator
+# macOS/Linux:
+chmod -R 755 ~/Documents/Life-Index
+```
+
+### How to run tests
+```bash
+# Run all tests
+python -m pytest tests/unit/ -v
+
+# Generate coverage report
+python -m pytest tests/unit/ --cov=tools --cov-report=html
+```
 
 ---
 
