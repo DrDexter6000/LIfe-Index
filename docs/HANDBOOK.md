@@ -150,9 +150,15 @@ Life Index 系统
 │   └── by-topic/          # 主题/项目/标签索引
 │
 └── 工具层（原子操作）
-    ├── write_journal      # 写入日志 + 维护索引
+    ├── write_journal      # 写入日志 + 维护索引（带文件锁）
     ├── search_journals    # 分层级检索
-    └── query_weather      # 天气查询
+    ├── edit_journal       # 编辑日志（带文件锁）
+    ├── build_index        # 构建索引（带文件锁）
+    ├── query_weather      # 天气查询
+    ├── generate_abstract  # 生成摘要
+    └── dev/               # 开发工具
+        ├── validate_data    # 数据校验
+        └── rebuild_indices  # 索引重建
 ```
 
 ### 4.3 三层分类模型

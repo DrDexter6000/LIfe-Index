@@ -5,18 +5,18 @@ Life Index - Abstract Generator
 
 Usage:
     # 生成月度摘要
-    python generate_abstract.py --month 2026-03
-    python generate_abstract.py --month 2026-03 --dry-run
+    python -m tools.generate_abstract --month 2026-03
+    python -m tools.generate_abstract --month 2026-03 --dry-run
 
     # 生成年度摘要
-    python generate_abstract.py --year 2026
-    python generate_abstract.py --year 2026 --dry-run
+    python -m tools.generate_abstract --year 2026
+    python -m tools.generate_abstract --year 2026 --dry-run
 
     # 批量生成全年月度摘要
-    python generate_abstract.py --year 2026 --all-months
+    python -m tools.generate_abstract --year 2026 --all-months
 
     # 同时生成年度和月度摘要
-    python generate_abstract.py --year 2026 --month 2026-03
+    python -m tools.generate_abstract --year 2026 --month 2026-03
 """
 
 import argparse
@@ -28,12 +28,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
-# 导入配置
-TOOLS_DIR = Path(__file__).parent
-if str(TOOLS_DIR) not in sys.path:
-    sys.path.insert(0, str(TOOLS_DIR))
-
-from lib.config import JOURNALS_DIR
+# 导入配置 (relative imports from parent tools package)
+from ..lib.config import JOURNALS_DIR
 
 
 def parse_frontmatter(file_path: Path) -> Optional[Dict]:
@@ -123,7 +119,6 @@ def parse_frontmatter(file_path: Path) -> Optional[Dict]:
         result["_body"] = body
         return result
     except (ValueError, IndexError, IOError, OSError):
-        return {}
         return {}
 
 
@@ -513,18 +508,18 @@ def main() -> None:
         epilog="""
 Examples:
     # 生成月度摘要
-    python generate_abstract.py --month 2026-03
-    python generate_abstract.py --month 2026-03 --dry-run
+    python -m tools.generate_abstract --month 2026-03
+    python -m tools.generate_abstract --month 2026-03 --dry-run
 
     # 生成年度摘要
-    python generate_abstract.py --year 2026
-    python generate_abstract.py --year 2026 --dry-run
+    python -m tools.generate_abstract --year 2026
+    python -m tools.generate_abstract --year 2026 --dry-run
 
     # 批量生成全年月度摘要
-    python generate_abstract.py --year 2026 --all-months
+    python -m tools.generate_abstract --year 2026 --all-months
 
     # 同时生成年度和指定月度摘要
-    python generate_abstract.py --year 2026 --month 2026-03
+    python -m tools.generate_abstract --year 2026 --month 2026-03
         """,
     )
 

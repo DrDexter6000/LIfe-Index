@@ -89,12 +89,12 @@ pip install sentence-transformers>=2.2.0
 
 所有工具位于 `tools/` 目录，通过 Bash 调用。详见 [API.md](docs/API.md) 完整接口文档。
 
-**模块结构**（2026-03-13更新）:
+**模块结构**（2026-03-14更新）:
 ```
 tools/
 ├── write_journal/              # 写入日志模块
 │   ├── __init__.py            # CLI入口
-│   ├── __main__.py            # 模块执行入口
+│   ├── __main__.py            # 模块执行入口 (python -m tools.write_journal)
 │   ├── core.py                # 核心协调逻辑（~220行，含事务保护）
 │   ├── utils.py               # 通用工具函数
 │   ├── frontmatter.py         # YAML frontmatter格式化（工具专用）
@@ -103,7 +103,7 @@ tools/
 │   └── index_updater.py       # 索引更新逻辑
 ├── search_journals/            # 搜索日志模块
 │   ├── __init__.py            # CLI入口
-│   ├── __main__.py            # 模块执行入口
+│   ├── __main__.py            # 模块执行入口 (python -m tools.search_journals)
 │   ├── core.py                # 核心协调逻辑（~230行）
 │   ├── utils.py               # 通用工具函数（SSOT：使用lib/frontmatter）
 │   ├── l1_index.py            # 一级索引搜索（by-topic索引）
@@ -111,19 +111,31 @@ tools/
 │   ├── l3_content.py          # 三级内容搜索（全文搜索）
 │   ├── semantic.py            # 语义搜索相关
 │   └── ranking.py             # 结果排序算法
-├── edit_journal.py            # 编辑日志
-├── generate_abstract.py       # 生成摘要
-├── build_index.py             # 构建索引
-├── query_weather.py           # 查询天气
-├── validate_data.py           # 数据完整性校验（开发工具）
-├── rebuild_indices.py         # 索引重建（开发工具）
-└── lib/                       # 共享库
+├── edit_journal/              # 编辑日志模块
+│   ├── __init__.py            # CLI入口
+│   └── __main__.py            # 模块执行入口 (python -m tools.edit_journal)
+├── generate_abstract/         # 生成摘要模块
+│   ├── __init__.py            # CLI入口
+│   └── __main__.py            # 模块执行入口 (python -m tools.generate_abstract)
+├── build_index/               # 构建索引模块
+│   ├── __init__.py            # CLI入口
+│   └── __main__.py            # 模块执行入口 (python -m tools.build_index)
+├── query_weather/             # 查询天气模块
+│   ├── __init__.py            # CLI入口
+│   └── __main__.py            # 模块执行入口 (python -m tools.query_weather)
+├── dev/                       # 开发工具（非生产使用）
+│   ├── validate_data/         # 数据完整性校验
+│   └── rebuild_indices/       # 索引重建
+└── lib/                       # 共享库 (详见 tools/lib/AGENTS.md)
+    ├── AGENTS.md              # 共享库开发指南
     ├── config.py              # 配置
     ├── errors.py              # 错误码
+    ├── file_lock.py           # 文件锁（并发控制）
     ├── frontmatter.py         # YAML frontmatter统一解析/格式化（SSOT）
     ├── metadata_cache.py      # 元数据缓存（L2搜索性能优化）
     ├── search_index.py        # 搜索索引
     ├── semantic_search.py     # 语义搜索
+    ├── timing.py              # 性能计时工具
     └── vector_index_simple.py # 向量索引
 ```
 
@@ -139,18 +151,24 @@ python -m tools.search_journals --topic work --project Life-Index --limit 10
 python -m tools.search_journals --query "学习笔记" --semantic
 
 # 编辑日志
-python tools/edit_journal.py --journal "Journals/2026/03/life-index_2026-03-07_001.md" --set-weather "晴天"
+python -m tools.edit_journal --journal "Journals/2026/03/life-index_2026-03-07_001.md" --set-weather "晴天"
 
 # 生成摘要
-python tools/generate_abstract.py --month 2026-03
-python tools/generate_abstract.py --year 2026
+python -m tools.generate_abstract --month 2026-03
+python -m tools.generate_abstract --year 2026
 
 # 构建索引
-python tools/build_index.py           # 增量更新
-python tools/build_index.py --rebuild # 全量重建
+python -m tools.build_index           # 增量更新
+python -m tools.build_index --rebuild # 全量重建
 
 # 查询天气
-python tools/query_weather.py --location "Lagos,Nigeria"
+python -m tools.query_weather --location "Lagos,Nigeria"
+
+# 数据校验（开发工具）
+python -m tools.dev.validate_data --json
+
+# 索引重建（开发工具）
+python -m tools.dev.rebuild_indices --dry-run
 ```
 
 ### 测试命令
@@ -300,12 +318,15 @@ attachments: ["file.mp4"]
 
 ### 工具调用规则
 
-**必须通过 Bash CLI 调用工具，禁止 Python import 直接调用**：
+**必须通过 Bash CLI 调用工具，使用 `python -m tools.xxx` 包模块模式**：
 ```bash
-# ✅ 正确
+# ✅ 正确 - 包模块模式
+python -m tools.write_journal --data '{...}'
+
+# ❌ 错误 - 直接调用脚本（已废弃）
 python tools/write_journal.py --data '{...}'
 
-# ❌ 错误
+# ❌ 错误 - Python import 直接调用
 from tools.write_journal import write_journal
 ```
 
@@ -327,6 +348,7 @@ from tools.write_journal import write_journal
 
 | 文档 | 内容 |
 |------|------|
+| `tools/lib/AGENTS.md` | 共享库开发指南（config、frontmatter、errors、search等模块） |
 | `SKILL.md` | Agent 技能定义、触发词、工具接口 |
 | `docs/HANDBOOK.md` | 项目愿景、架构设计、核心原则 |
 | `docs/INSTRUCTIONS.md` | Agent 执行指令、工作流步骤 |
@@ -340,10 +362,11 @@ from tools.write_journal import write_journal
 
 ### 添加新工具
 
-1. 在 `tools/` 目录创建 Python 文件
-2. 实现 CLI 接口（argparse）
-3. 返回标准 JSON 格式
-4. 在 `SKILL.md` 中添加工具说明
+1. 在 `tools/` 目录创建包目录 `tools/{tool_name}/`
+2. 创建 `__init__.py`（包含 `main()` 函数和 CLI 逻辑）
+3. 创建 `__main__.py`（包含 `from . import main; if __name__ == "__main__": main()`）
+4. 返回标准 JSON 格式
+5. 在 `SKILL.md` 中添加工具说明
 
 ### 修改日志格式
 

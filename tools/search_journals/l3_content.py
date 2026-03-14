@@ -8,11 +8,8 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-# 导入配置
-import sys
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from lib.config import JOURNALS_DIR, USER_DATA_DIR
+# 导入配置 (relative imports from tools/lib)
+from ..lib.config import JOURNALS_DIR, USER_DATA_DIR
 
 from .utils import parse_frontmatter
 

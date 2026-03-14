@@ -50,19 +50,19 @@ triggers:
 **所有功能必须通过 Bash CLI 调用，禁止手动操作文件或 Python import 直接调用。**
 
 ```bash
-# ✅ 正确
-python tools/write_journal.py --data '{"title":"...","content":"...","date":"2026-03-10"}'
+# ✅ 正确 - 使用模块模式
+python -m tools.write_journal --data '{"title":"...","content":"...","date":"2026-03-10"}'
 
-# ❌ 错误
+# ❌ 错误 - 直接 import
 from tools.write_journal import write_journal
 ```
 
 ## 工具调用示例
 
-### write_journal.py
+### write_journal
 
 ```bash
-python tools/write_journal.py --data '{
+python -m tools.write_journal --data '{
   "title": "日志标题",
   "content": "用户原文（禁止预处理）",
   "date": "2026-03-10",
@@ -74,25 +74,50 @@ python tools/write_journal.py --data '{
 
 **重要**：写入后必须检查 `needs_confirmation`，展示确认信息给用户。
 
-### search_journals.py
+### search_journals
 
 ```bash
-python tools/search_journals.py --query "关键词" --topic work --level 3
+python -m tools.search_journals --query "关键词" --topic work --level 3
 ```
 
-### edit_journal.py
+### edit_journal
 
 ```bash
-python tools/edit_journal.py --journal "Journals/2026/03/life-index_2026-03-10_001.md" --set-location "Beijing, China"
+python -m tools.edit_journal --journal "Journals/2026/03/life-index_2026-03-10_001.md" --set-location "Beijing, China"
 ```
 
-**注意**：`edit_journal.py` 不会自动查询天气，需先调用 `query_weather.py`。
+**注意**：`edit_journal` 不会自动查询天气，需先调用 `query_weather`。
 
-### generate_abstract.py
+### generate_abstract
 
 ```bash
-python tools/generate_abstract.py --month 2026-03
-python tools/generate_abstract.py --year 2026
+python -m tools.generate_abstract --month 2026-03
+python -m tools.generate_abstract --year 2026
+```
+
+### query_weather
+
+```bash
+python -m tools.query_weather --location "Lagos,Nigeria"
+```
+
+### build_index
+
+```bash
+python -m tools.build_index           # 增量更新
+python -m tools.build_index --rebuild # 全量重建
+```
+
+### validate_data (开发工具)
+
+```bash
+python -m tools.dev.validate_data --json
+```
+
+### rebuild_indices (开发工具)
+
+```bash
+python -m tools.dev.rebuild_indices --dry-run
 ```
 
 # Weather Handling

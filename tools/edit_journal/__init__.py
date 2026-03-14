@@ -5,18 +5,18 @@ Life Index - Edit Journal Tool
 
 Usage:
     # 编辑 frontmatter 字段
-    python edit_journal.py --journal "Journals/2026/03/life-index_2026-03-05_001.md" \
+    python -m tools.edit_journal --journal "Journals/2026/03/life-index_2026-03-05_001.md" \
         --set-location "Beijing, China" \
         --set-weather "多云"
 
     # 追加正文内容
-    python edit_journal.py --journal "..." --append-content "补充内容"
+    python -m tools.edit_journal --journal "..." --append-content "补充内容"
 
     # 替换正文内容（保留 frontmatter）
-    python edit_journal.py --journal "..." --replace-content "新内容"
+    python -m tools.edit_journal --journal "..." --replace-content "新内容"
 
     # 修改 topic（触发索引重建）
-    python edit_journal.py --journal "..." --set-topic "learn"
+    python -m tools.edit_journal --journal "..." --set-topic "learn"
 """
 
 import argparse
@@ -28,22 +28,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
 
-# 导入配置
-TOOLS_DIR = Path(__file__).parent
-if str(TOOLS_DIR) not in sys.path:
-    sys.path.insert(0, str(TOOLS_DIR))
-
-try:
-    from lib.config import JOURNALS_DIR, BY_TOPIC_DIR
-    from lib.frontmatter import (
-        parse_journal_file,
-        format_frontmatter,
-        update_frontmatter_fields,
-    )
-except ImportError:
-    PROJECT_ROOT = Path(__file__).parent.parent
-    JOURNALS_DIR = PROJECT_ROOT / "journals"
-    BY_TOPIC_DIR = PROJECT_ROOT / "by-topic"
+# 导入配置 (relative imports from parent tools package)
+from ..lib.config import JOURNALS_DIR, BY_TOPIC_DIR
+from ..lib.frontmatter import (
+    parse_journal_file,
+    format_frontmatter,
+    update_frontmatter_fields,
+)
+from ..lib.file_lock import FileLock, LockTimeoutError, get_journals_lock_path
+from ..lib.errors import ErrorCode, create_error_response
 
 
 def parse_journal(file_path: Path) -> Tuple[Dict[str, Any], str]:
@@ -242,7 +235,7 @@ def edit_journal(
         metadata = parse_journal_file(journal_path)
         old_frontmatter = {k: v for k, v in metadata.items() if not k.startswith("_")}
         old_body = metadata.get("_body", "")
-        
+
         # 应用 frontmatter 更新
         new_frontmatter = dict(old_frontmatter)
         for key, value in frontmatter_updates.items():
@@ -280,16 +273,31 @@ def edit_journal(
             }
             return result
 
-        # 写入文件
-        new_content = format_frontmatter(new_frontmatter) + "\n\n" + new_body
-        journal_path.write_text(new_content, encoding="utf-8")
+        # ===== 文件锁保护 =====
+        # 使用文件锁保护写入操作，防止并发冲突
+        lock = FileLock(get_journals_lock_path(), timeout=30.0)
 
-        # 更新索引（如果相关字段变更）
-        if any(k in result["changes"] for k in ["topic", "project", "tags"]):
-            updated = update_indices_for_change(
-                journal_path, old_frontmatter, new_frontmatter
+        try:
+            with lock:
+                # 写入文件
+                new_content = format_frontmatter(new_frontmatter) + "\n\n" + new_body
+                journal_path.write_text(new_content, encoding="utf-8")
+
+                # 更新索引（如果相关字段变更）
+                if any(k in result["changes"] for k in ["topic", "project", "tags"]):
+                    updated = update_indices_for_change(
+                        journal_path, old_frontmatter, new_frontmatter
+                    )
+                    result["indices_updated"] = updated
+
+        except LockTimeoutError as e:
+            # 锁超时，返回结构化错误
+            return create_error_response(
+                ErrorCode.LOCK_TIMEOUT,
+                f"无法获取写入锁，请稍后重试: {e}",
+                {"lock_path": str(get_journals_lock_path()), "timeout": 30.0},
+                "等待几秒后重试，或检查是否有其他进程正在编辑",
             )
-            result["indices_updated"] = updated
 
         result["success"] = True
 
@@ -306,17 +314,17 @@ def main() -> None:
         epilog="""
 Examples:
     # 设置地点和天气
-    python edit_journal.py --journal "Journals/2026/03/life-index_2026-03-05_001.md" \\
+    python -m tools.edit_journal --journal "Journals/2026/03/life-index_2026-03-05_001.md" \\
         --set-location "Beijing, China" --set-weather "多云"
 
     # 追加正文内容
-    python edit_journal.py --journal "..." --append-content "下午还讨论了部署方案。"
+    python -m tools.edit_journal --journal "..." --append-content "下午还讨论了部署方案。"
 
     # 修改 topic（会触发索引重建）
-    python edit_journal.py --journal "..." --set-topic "learn"
+    python -m tools.edit_journal --journal "..." --set-topic "learn"
 
     # 批量修改多个字段
-    python edit_journal.py --journal "..." \\
+    python -m tools.edit_journal --journal "..." \\
         --set-location "Shanghai, China" \\
         --set-mood "开心,兴奋" \\
         --set-project "New-Project"
@@ -358,13 +366,9 @@ Examples:
     journal_path = Path(args.journal)
     if not journal_path.is_absolute():
         # 尝试相对于用户数据目录解析
-        try:
-            from lib.config import USER_DATA_DIR
+        from ..lib.config import USER_DATA_DIR
 
-            base_dir = USER_DATA_DIR
-        except ImportError:
-            base_dir = Path.cwd()
-
+        base_dir = USER_DATA_DIR
         journal_path = base_dir / journal_path
 
     # 收集 frontmatter 更新

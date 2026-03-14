@@ -10,12 +10,9 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-# 导入配置
-import sys
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from lib.config import JOURNALS_DIR, USER_DATA_DIR
-from lib.metadata_cache import (
+# 导入配置 (relative imports from tools/lib)
+from ..lib.config import JOURNALS_DIR, USER_DATA_DIR
+from ..lib.metadata_cache import (
     get_or_update_metadata,
     get_all_cached_metadata,
     init_metadata_cache,

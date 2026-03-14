@@ -1,0 +1,192 @@
+{
+  "timestamp": "2026-03-14T02:22:50.931277",
+  "summary": {
+    "total": 13,
+    "passed": 12,
+    "failed": 1,
+    "pass_rate": 0.92
+  },
+  "phases": [
+    {
+      "name": "Phase 1 - 核心工作流覆盖",
+      "passed": 7,
+      "failed": 0,
+      "total": 7,
+      "pass_rate": 1.0,
+      "cases": [
+        {
+          "id": "E2E-01",
+          "name": "极速记录模式 - 自动填充天气",
+          "phase": "Phase 1 - 核心工作流覆盖",
+          "passed": true,
+          "duration_ms": 0,
+          "error": "",
+          "details": {
+            "dry_run": true
+          },
+          "performance": {}
+        },
+        {
+          "id": "E2E-02",
+          "name": "补全模式",
+          "phase": "Phase 1 - 核心工作流覆盖",
+          "passed": true,
+          "duration_ms": 0,
+          "error": "",
+          "details": {
+            "dry_run": true
+          },
+          "performance": {}
+        },
+        {
+          "id": "E2E-03",
+          "name": "同一天多条日志",
+          "phase": "Phase 1 - 核心工作流覆盖",
+          "passed": true,
+          "duration_ms": 0,
+          "error": "",
+          "details": {
+            "dry_run": true
+          },
+          "performance": {}
+        },
+        {
+          "id": "E2E-04",
+          "name": "附件重名处理",
+          "phase": "Phase 1 - 核心工作流覆盖",
+          "passed": true,
+          "duration_ms": 0,
+          "error": "",
+          "details": {
+            "dry_run": true
+          },
+          "performance": {}
+        },
+        {
+          "id": "E2E-05",
+          "name": "地点自动规范化",
+          "phase": "Phase 1 - 核心工作流覆盖",
+          "passed": true,
+          "duration_ms": 0,
+          "error": "",
+          "details": {
+            "dry_run": true
+          },
+          "performance": {}
+        },
+        {
+          "id": "E2E-06",
+          "name": "天气确认流程 - 用户修改地点",
+          "phase": "Phase 1 - 核心工作流覆盖",
+          "passed": true,
+          "duration_ms": 0,
+          "error": "",
+          "details": {
+            "dry_run": true
+          },
+          "performance": {}
+        },
+        {
+          "id": "E2E-07",
+          "name": "天气确认流程 - 用户同时修改地点和天气",
+          "phase": "Phase 1 - 核心工作流覆盖",
+          "passed": true,
+          "duration_ms": 0,
+          "error": "",
+          "details": {
+            "dry_run": true
+          },
+          "performance": {}
+        }
+      ]
+    },
+    {
+      "name": "Phase 2 - 搜索检索覆盖",
+      "passed": 5,
+      "failed": 0,
+      "total": 5,
+      "pass_rate": 1.0,
+      "cases": [
+        {
+          "id": "E2E-05",
+          "name": "L1 索引搜索 - 按主题",
+          "phase": "Phase 2 - 搜索检索覆盖",
+          "passed": true,
+          "duration_ms": 0,
+          "error": "",
+          "details": {
+            "dry_run": true
+          },
+          "performance": {}
+        },
+        {
+          "id": "E2E-06",
+          "name": "L2 元数据搜索 - 复合条件",
+          "phase": "Phase 2 - 搜索检索覆盖",
+          "passed": true,
+          "duration_ms": 0,
+          "error": "",
+          "details": {
+            "dry_run": true
+          },
+          "performance": {}
+        },
+        {
+          "id": "E2E-07",
+          "name": "L3 全文搜索 - 关键词匹配",
+          "phase": "Phase 2 - 搜索检索覆盖",
+          "passed": true,
+          "duration_ms": 0,
+          "error": "",
+          "details": {
+            "dry_run": true
+          },
+          "performance": {}
+        },
+        {
+          "id": "E2E-08",
+          "name": "搜索结果限制",
+          "phase": "Phase 2 - 搜索检索覆盖",
+          "passed": true,
+          "duration_ms": 0,
+          "error": "",
+          "details": {
+            "dry_run": true
+          },
+          "performance": {}
+        },
+        {
+          "id": "E2E-09",
+          "name": "复合搜索 - 多条件组合",
+          "phase": "Phase 2 - 搜索检索覆盖",
+          "passed": true,
+          "duration_ms": 0,
+          "error": "",
+          "details": {
+            "dry_run": true
+          },
+          "performance": {}
+        }
+      ]
+    },
+    {
+      "name": "Phase 3 (YAML Error)",
+      "passed": 0,
+      "failed": 1,
+      "total": 1,
+      "pass_rate": 0.0,
+      "cases": [
+        {
+          "id": "YAML_PARSE_ERROR",
+          "name": "Failed to parse phase3-edge-cases.yaml",
+          "phase": "Phase 3",
+          "passed": false,
+          "duration_ms": 0,
+          "error": "while scanning an alias\n  in \"D:\\Loster AI\\Projects\\life-index\\tests\\e2e\\phase3-edge-cases.yaml\", line 96, column 28\nexpected alphabetic or numeric character, but found ' '\n  in \"D:\\Loster AI\\Projects\\life-index\\tests\\e2e\\phase3-edge-cases.yaml\", line 96, column 29",
+          "details": {},
+          "performance": {}
+        }
+      ]
+    }
+  ]
+}

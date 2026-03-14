@@ -7,11 +7,8 @@ Life Index - Search Journals Tool - Semantic
 from pathlib import Path
 from typing import Any, Dict, List
 
-# 导入配置
-import sys
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from lib.config import USER_DATA_DIR
+# 导入配置 (relative imports from tools/lib)
+from ..lib.config import USER_DATA_DIR
 
 from .utils import parse_frontmatter
 
@@ -34,7 +31,7 @@ def search_semantic(
 
     try:
         # 尝试使用简单向量索引（Windows 兼容）
-        from lib.vector_index_simple import get_model, get_index
+        from ..lib.vector_index_simple import get_model, get_index
 
         model = get_model()
         if model.load():

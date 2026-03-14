@@ -41,6 +41,8 @@ class ErrorCode:
     INVALID_INPUT = "E0001"
     PERMISSION_DENIED = "E0002"
     CONFIG_ERROR = "E0003"
+    LOCK_TIMEOUT = "E0005"
+    LOCK_ACQUISITION_FAILED = "E0006"
 
     # ========== File Module (01xx) ==========
     FILE_NOT_FOUND = "E0100"
@@ -133,6 +135,9 @@ class LifeIndexError(Exception):
         # Search errors: Return empty
         ErrorCode.NO_RESULTS: "continue_empty",
         ErrorCode.QUERY_EMPTY: "ask_user",
+        # Lock errors: Retry or ask user
+        ErrorCode.LOCK_TIMEOUT: "retry",
+        ErrorCode.LOCK_ACQUISITION_FAILED: "retry",
     }
 
     def __init__(
@@ -180,6 +185,8 @@ ERROR_DESCRIPTIONS = {
     ErrorCode.INVALID_INPUT: "Invalid input provided",
     ErrorCode.PERMISSION_DENIED: "Permission denied for operation",
     ErrorCode.CONFIG_ERROR: "Configuration error",
+    ErrorCode.LOCK_TIMEOUT: "File lock acquisition timed out",
+    ErrorCode.LOCK_ACQUISITION_FAILED: "Failed to acquire file lock",
     # File
     ErrorCode.FILE_NOT_FOUND: "File not found",
     ErrorCode.FILE_ALREADY_EXISTS: "File already exists",

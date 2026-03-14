@@ -205,6 +205,16 @@ def process_attachments(
         if not source_path:
             continue
 
+        # 安全检查：防止路径遍历攻击
+        # NOTE: 当前实现允许访问任何可读文件。如需限制访问范围，
+        # 请使用 lib.config.get_safe_path() 验证路径是否在允许的目录内。
+        # 例如：限制只能访问用户文档目录下的文件
+        # from lib.config import get_safe_path, USER_DATA_DIR
+        # safe_path = get_safe_path(source_path, USER_DATA_DIR)
+        # if safe_path is None:
+        #     processed.append({"filename": f"[访问被拒绝: {source_path}]", ...})
+        #     continue
+
         # 尝试跨平台路径转换
         converted_path = convert_path_for_platform(source_path)
 

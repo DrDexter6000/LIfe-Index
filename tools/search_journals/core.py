@@ -9,9 +9,6 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-# 导入配置
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
 # 导入子模块
 from .l1_index import scan_all_indices, search_l1_index
 from .l2_metadata import search_l2_metadata

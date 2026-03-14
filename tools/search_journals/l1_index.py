@@ -8,11 +8,8 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List
 
-# 导入配置
-import sys
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from lib.config import BY_TOPIC_DIR, USER_DATA_DIR, PROJECT_ROOT
+# 导入配置 (relative imports from tools/lib)
+from ..lib.config import BY_TOPIC_DIR, USER_DATA_DIR, PROJECT_ROOT
 
 
 def scan_all_indices() -> List[Dict[str, Any]]:

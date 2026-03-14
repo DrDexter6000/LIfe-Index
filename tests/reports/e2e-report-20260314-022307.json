@@ -1,0 +1,90 @@
+{
+  "timestamp": "2026-03-14T02:23:07.192631",
+  "summary": {
+    "total": 7,
+    "passed": 0,
+    "failed": 7,
+    "pass_rate": 0.0
+  },
+  "phases": [
+    {
+      "name": "Phase 1 - 核心工作流覆盖",
+      "passed": 0,
+      "failed": 7,
+      "total": 7,
+      "pass_rate": 0.0,
+      "cases": [
+        {
+          "id": "E2E-01",
+          "name": "极速记录模式 - 自动填充天气",
+          "phase": "Phase 1 - 核心工作流覆盖",
+          "passed": false,
+          "duration_ms": 60.23,
+          "error": "Tool failed: Traceback (most recent call last):\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\write_journal\\core.py\", line 18, in <module>\n    from lib.config import JOURNALS_DIR\nModuleNotFoundError: No module named 'lib.config'\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"<frozen runpy>\", line 189, in _run_module_as_main\n  File \"<frozen runpy>\", line 148, in _get_module_details\n  File \"<frozen runpy>\", line 112, in _get_module_details\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\write_journal\\__init__.py\", line 19, in <module>\n    from .core import write_journal\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\write_journal\\core.py\", line 29, in <module>\n    from tools.lib.timing import Timer\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\lib\\timing.py\", line 33, in <module>\n    class Timer:\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\lib\\timing.py\", line 108, in Timer\n    def to_metrics(self) -> Dict[str, Any]:\n                                      ^^^\nNameError: name 'Any' is not defined. Did you mean: 'any'?\n",
+          "details": {},
+          "performance": {}
+        },
+        {
+          "id": "E2E-02",
+          "name": "补全模式",
+          "phase": "Phase 1 - 核心工作流覆盖",
+          "passed": false,
+          "duration_ms": 56.65,
+          "error": "No journal to edit",
+          "details": {},
+          "performance": {}
+        },
+        {
+          "id": "E2E-03",
+          "name": "同一天多条日志",
+          "phase": "Phase 1 - 核心工作流覆盖",
+          "passed": false,
+          "duration_ms": 165.71,
+          "error": "Step 1: Tool failed: Traceback (most recent call last):\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\write_journal\\core.py\", line 18, in <module>\n    from lib.config import JOURNALS_DIR\nModuleNotFoundError: No module named 'lib.config'\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"<frozen runpy>\", line 189, in _run_module_as_main\n  File \"<frozen runpy>\", line 148, in _get_module_details\n  File \"<frozen runpy>\", line 112, in _get_module_details\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\write_journal\\__init__.py\", line 19, in <module>\n    from .core import write_journal\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\write_journal\\core.py\", line 29, in <module>\n    from tools.lib.timing import Timer\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\lib\\timing.py\", line 33, in <module>\n    class Timer:\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\lib\\timing.py\", line 108, in Timer\n    def to_metrics(self) -> Dict[str, Any]:\n                                      ^^^\nNameError: name 'Any' is not defined. Did you mean: 'any'?\n; Step 2: Tool failed: Traceback (most recent call last):\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\write_journal\\core.py\", line 18, in <module>\n    from lib.config import JOURNALS_DIR\nModuleNotFoundError: No module named 'lib.config'\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"<frozen runpy>\", line 189, in _run_module_as_main\n  File \"<frozen runpy>\", line 148, in _get_module_details\n  File \"<frozen runpy>\", line 112, in _get_module_details\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\write_journal\\__init__.py\", line 19, in <module>\n    from .core import write_journal\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\write_journal\\core.py\", line 29, in <module>\n    from tools.lib.timing import Timer\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\lib\\timing.py\", line 33, in <module>\n    class Timer:\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\lib\\timing.py\", line 108, in Timer\n    def to_metrics(self) -> Dict[str, Any]:\n                                      ^^^\nNameError: name 'Any' is not defined. Did you mean: 'any'?\n; Step 3: Tool failed: Traceback (most recent call last):\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\write_journal\\core.py\", line 18, in <module>\n    from lib.config import JOURNALS_DIR\nModuleNotFoundError: No module named 'lib.config'\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"<frozen runpy>\", line 189, in _run_module_as_main\n  File \"<frozen runpy>\", line 148, in _get_module_details\n  File \"<frozen runpy>\", line 112, in _get_module_details\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\write_journal\\__init__.py\", line 19, in <module>\n    from .core import write_journal\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\write_journal\\core.py\", line 29, in <module>\n    from tools.lib.timing import Timer\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\lib\\timing.py\", line 33, in <module>\n    class Timer:\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\lib\\timing.py\", line 108, in Timer\n    def to_metrics(self) -> Dict[str, Any]:\n                                      ^^^\nNameError: name 'Any' is not defined. Did you mean: 'any'?\n",
+          "details": {},
+          "performance": {}
+        },
+        {
+          "id": "E2E-04",
+          "name": "附件重名处理",
+          "phase": "Phase 1 - 核心工作流覆盖",
+          "passed": false,
+          "duration_ms": 109.88,
+          "error": "Step 1: Tool failed: Traceback (most recent call last):\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\write_journal\\core.py\", line 18, in <module>\n    from lib.config import JOURNALS_DIR\nModuleNotFoundError: No module named 'lib.config'\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"<frozen runpy>\", line 189, in _run_module_as_main\n  File \"<frozen runpy>\", line 148, in _get_module_details\n  File \"<frozen runpy>\", line 112, in _get_module_details\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\write_journal\\__init__.py\", line 19, in <module>\n    from .core import write_journal\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\write_journal\\core.py\", line 29, in <module>\n    from tools.lib.timing import Timer\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\lib\\timing.py\", line 33, in <module>\n    class Timer:\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\lib\\timing.py\", line 108, in Timer\n    def to_metrics(self) -> Dict[str, Any]:\n                                      ^^^\nNameError: name 'Any' is not defined. Did you mean: 'any'?\n; Step 2: Tool failed: Traceback (most recent call last):\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\write_journal\\core.py\", line 18, in <module>\n    from lib.config import JOURNALS_DIR\nModuleNotFoundError: No module named 'lib.config'\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"<frozen runpy>\", line 189, in _run_module_as_main\n  File \"<frozen runpy>\", line 148, in _get_module_details\n  File \"<frozen runpy>\", line 112, in _get_module_details\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\write_journal\\__init__.py\", line 19, in <module>\n    from .core import write_journal\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\write_journal\\core.py\", line 29, in <module>\n    from tools.lib.timing import Timer\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\lib\\timing.py\", line 33, in <module>\n    class Timer:\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\lib\\timing.py\", line 108, in Timer\n    def to_metrics(self) -> Dict[str, Any]:\n                                      ^^^\nNameError: name 'Any' is not defined. Did you mean: 'any'?\n",
+          "details": {},
+          "performance": {}
+        },
+        {
+          "id": "E2E-05",
+          "name": "地点自动规范化",
+          "phase": "Phase 1 - 核心工作流覆盖",
+          "passed": false,
+          "duration_ms": 54.4,
+          "error": "Tool failed: Traceback (most recent call last):\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\write_journal\\core.py\", line 18, in <module>\n    from lib.config import JOURNALS_DIR\nModuleNotFoundError: No module named 'lib.config'\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"<frozen runpy>\", line 189, in _run_module_as_main\n  File \"<frozen runpy>\", line 148, in _get_module_details\n  File \"<frozen runpy>\", line 112, in _get_module_details\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\write_journal\\__init__.py\", line 19, in <module>\n    from .core import write_journal\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\write_journal\\core.py\", line 29, in <module>\n    from tools.lib.timing import Timer\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\lib\\timing.py\", line 33, in <module>\n    class Timer:\n  File \"D:\\Loster AI\\Projects\\life-index\\tools\\lib\\timing.py\", line 108, in Timer\n    def to_metrics(self) -> Dict[str, Any]:\n                                      ^^^\nNameError: name 'Any' is not defined. Did you mean: 'any'?\n",
+          "details": {},
+          "performance": {}
+        },
+        {
+          "id": "E2E-06",
+          "name": "天气确认流程 - 用户修改地点",
+          "phase": "Phase 1 - 核心工作流覆盖",
+          "passed": false,
+          "duration_ms": 56.77,
+          "error": "No journal to edit",
+          "details": {},
+          "performance": {}
+        },
+        {
+          "id": "E2E-07",
+          "name": "天气确认流程 - 用户同时修改地点和天气",
+          "phase": "Phase 1 - 核心工作流覆盖",
+          "passed": false,
+          "duration_ms": 56.63,
+          "error": "No journal to edit",
+          "details": {},
+          "performance": {}
+        }
+      ]
+    }
+  ]
+}

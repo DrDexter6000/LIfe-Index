@@ -4,9 +4,9 @@ Life Index - Query Weather Tool
 查询指定日期和地点的天气信息 (使用 Open-Meteo API)
 
 Usage:
-    python query_weather.py --location "Lagos" --date 2026-03-04
-    python query_weather.py --lat 6.5244 --lon 3.3792 --date 2026-03-04
-    python query_weather.py --location "Lagos,Nigeria" --date 2026-03-04 --format detailed
+    python -m tools.query_weather --location "Lagos" --date 2026-03-04
+    python -m tools.query_weather --lat 6.5244 --lon 3.3792 --date 2026-03-04
+    python -m tools.query_weather --location "Lagos,Nigeria" --date 2026-03-04 --format detailed
 """
 
 import argparse
@@ -37,16 +37,13 @@ def geocode_location(location: str) -> Optional[Dict[str, Any]]:
         }
     """
     try:
-        params = urllib.parse.urlencode({
-            "name": location,
-            "count": 5,
-            "language": "en",
-            "format": "json"
-        })
+        params = urllib.parse.urlencode(
+            {"name": location, "count": 5, "language": "en", "format": "json"}
+        )
         url = f"{GEOCODING_API}?{params}"
 
         with urllib.request.urlopen(url, timeout=10) as response:
-            data = json.loads(response.read().decode('utf-8'))
+            data = json.loads(response.read().decode("utf-8"))
 
         if not data.get("results"):
             return None
@@ -58,11 +55,15 @@ def geocode_location(location: str) -> Optional[Dict[str, Any]]:
             "latitude": result.get("latitude", 0),
             "longitude": result.get("longitude", 0),
             "country": result.get("country", ""),
-            "admin1": result.get("admin1", "")
+            "admin1": result.get("admin1", ""),
         }
 
-    except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError, TimeoutError) as e:
-        return {"error": str(e)}
+    except (
+        urllib.error.URLError,
+        urllib.error.HTTPError,
+        json.JSONDecodeError,
+        TimeoutError,
+    ) as e:
         return {"error": str(e)}
 
 
@@ -92,7 +93,7 @@ def get_weather_code_description(code: int) -> str:
         86: "Heavy snow showers (强阵雪)",
         95: "Thunderstorm (雷雨)",
         96: "Thunderstorm with slight hail (雷雨伴小冰雹)",
-        99: "Thunderstorm with heavy hail (雷雨伴大冰雹)"
+        99: "Thunderstorm with heavy hail (雷雨伴大冰雹)",
     }
     return codes.get(code, f"Unknown weather code: {code}")
 
@@ -120,10 +121,7 @@ def simplify_weather(description: str) -> str:
 
 
 def query_weather(
-    latitude: float,
-    longitude: float,
-    date: str,
-    timezone: str = "auto"
+    latitude: float, longitude: float, date: str, timezone: str = "auto"
 ) -> Dict[str, Any]:
     """
     查询指定坐标和日期的天气
@@ -155,7 +153,7 @@ def query_weather(
         "date": date,
         "location": {"lat": latitude, "lon": longitude},
         "weather": {},
-        "error": None
+        "error": None,
     }
 
     try:
@@ -169,19 +167,21 @@ def query_weather(
         else:
             api_url = FORECAST_API
 
-        params = urllib.parse.urlencode({
-            "latitude": latitude,
-            "longitude": longitude,
-            "start_date": date,
-            "end_date": date,
-            "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum",
-            "timezone": timezone
-        })
+        params = urllib.parse.urlencode(
+            {
+                "latitude": latitude,
+                "longitude": longitude,
+                "start_date": date,
+                "end_date": date,
+                "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum",
+                "timezone": timezone,
+            }
+        )
 
         url = f"{api_url}?{params}"
 
         with urllib.request.urlopen(url, timeout=15) as response:
-            data = json.loads(response.read().decode('utf-8'))
+            data = json.loads(response.read().decode("utf-8"))
 
         daily = data.get("daily", {})
 
@@ -198,7 +198,7 @@ def query_weather(
             "simple": simplify_weather(description),
             "temperature_max": daily.get("temperature_2m_max", [None])[0],
             "temperature_min": daily.get("temperature_2m_min", [None])[0],
-            "precipitation": daily.get("precipitation_sum", [None])[0]
+            "precipitation": daily.get("precipitation_sum", [None])[0],
         }
         result["success"] = True
 
@@ -207,7 +207,6 @@ def query_weather(
     except urllib.error.URLError as e:
         result["error"] = f"Network error: {e.reason}"
     except (json.JSONDecodeError, KeyError, IndexError) as e:
-        result["error"] = str(e)
         result["error"] = str(e)
 
     return result
@@ -219,78 +218,71 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-    python query_weather.py --location "Lagos"
-    python query_weather.py --location "Beijing,China" --date 2026-03-04
-    python query_weather.py --lat 6.5244 --lon 3.3792 --date 2026-03-04
-    python query_weather.py --location "Paris" --format simple
-        """
+    python -m tools.query_weather --location "Lagos"
+    python -m tools.query_weather --location "Beijing,China" --date 2026-03-04
+    python -m tools.query_weather --lat 6.5244 --lon 3.3792 --date 2026-03-04
+    python -m tools.query_weather --location "Paris" --format simple
+        """,
     )
 
-    parser.add_argument(
-        "--location",
-        help='地点名称 (如 "Lagos", "Beijing,China")'
-    )
+    parser.add_argument("--location", help='地点名称 (如 "Lagos", "Beijing,China")')
 
-    parser.add_argument(
-        "--lat",
-        type=float,
-        help='纬度'
-    )
+    parser.add_argument("--lat", type=float, help="纬度")
 
-    parser.add_argument(
-        "--lon",
-        type=float,
-        help='经度'
-    )
+    parser.add_argument("--lon", type=float, help="经度")
 
     parser.add_argument(
         "--date",
         default=datetime.now().strftime("%Y-%m-%d"),
-        help='日期 (YYYY-MM-DD), 默认今天'
+        help="日期 (YYYY-MM-DD), 默认今天",
     )
 
     parser.add_argument(
-        "--format",
-        choices=["detailed", "simple"],
-        default="detailed",
-        help='输出格式'
+        "--format", choices=["detailed", "simple"], default="detailed", help="输出格式"
     )
 
-    parser.add_argument(
-        "--timezone",
-        default="auto",
-        help='时区 (默认 auto)'
-    )
+    parser.add_argument("--timezone", default="auto", help="时区 (默认 auto)")
 
     args = parser.parse_args()
 
     # 验证参数
     if not args.location and (args.lat is None or args.lon is None):
-        print(json.dumps({
-            "success": False,
-            "error": "必须提供 --location 或 --lat/--lon"
-        }, ensure_ascii=False, indent=2))
+        print(
+            json.dumps(
+                {"success": False, "error": "必须提供 --location 或 --lat/--lon"},
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
         sys.exit(1)
 
     # 获取坐标
     if args.location:
         geo_result = geocode_location(args.location)
         if geo_result is None:
-            print(json.dumps({
-                "success": False,
-                "error": f"无法找到地点: {args.location}"
-            }, ensure_ascii=False, indent=2))
+            print(
+                json.dumps(
+                    {"success": False, "error": f"无法找到地点: {args.location}"},
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
             sys.exit(1)
         if "error" in geo_result:
-            print(json.dumps({
-                "success": False,
-                "error": f"地理编码错误: {geo_result['error']}"
-            }, ensure_ascii=False, indent=2))
+            print(
+                json.dumps(
+                    {"success": False, "error": f"地理编码错误: {geo_result['error']}"},
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
             sys.exit(1)
 
         latitude = geo_result["latitude"]
         longitude = geo_result["longitude"]
-        location_name = f"{geo_result['name']}, {geo_result.get('admin1', '')}, {geo_result['country']}".strip(", ")
+        location_name = f"{geo_result['name']}, {geo_result.get('admin1', '')}, {geo_result['country']}".strip(
+            ", "
+        )
     else:
         latitude = args.lat
         longitude = args.lon
@@ -308,7 +300,7 @@ Examples:
             "date": args.date,
             "weather": result["weather"].get("simple", "未知"),
             "temp_high": result["weather"].get("temperature_max"),
-            "temp_low": result["weather"].get("temperature_min")
+            "temp_low": result["weather"].get("temperature_min"),
         }
         print(json.dumps(simple_output, ensure_ascii=False, indent=2))
     else:
