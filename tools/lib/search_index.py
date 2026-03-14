@@ -216,7 +216,8 @@ def update_index(incremental: bool = True) -> Dict[str, Any]:
         if not incremental:
             cursor.execute("DELETE FROM journals")
             files_to_remove = set()
-            files_to_update = [("add", JOURNALS_DIR / p, p) for p in current_files]
+            # p is already relative to USER_DATA_DIR, need to reconstruct full path correctly
+            files_to_update = [("add", USER_DATA_DIR / p, p) for p in current_files]
             result["removed"] = len(indexed_files)
 
         # 执行删除

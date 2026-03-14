@@ -185,6 +185,7 @@ omit = [
     "*/tests/*",
     "*/test_*",
     "tools/lib/vector_index_simple.py",  # Optional module
+    "tools/**/__main__.py",  # CLI entry points (tested via E2E)
 ]
 
 [tool.coverage.report]
