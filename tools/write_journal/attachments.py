@@ -10,19 +10,14 @@ import shutil
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-# 导入配置
+# 导入配置 - 使用绝对导入确保正确的 USER_DATA_DIR
 import sys
 
-TOOLS_DIR = Path(__file__).parent
-if str(TOOLS_DIR) not in sys.path:
-    sys.path.insert(0, str(TOOLS_DIR))
+TOOLS_LIB_DIR = Path(__file__).parent.parent / "lib"
+if str(TOOLS_LIB_DIR) not in sys.path:
+    sys.path.insert(0, str(TOOLS_LIB_DIR))
 
-try:
-    from lib.config import ATTACHMENTS_DIR
-except ImportError:
-    # 回退到项目目录（用于开发测试）
-    PROJECT_ROOT = Path(__file__).parent.parent
-    ATTACHMENTS_DIR = PROJECT_ROOT / "attachments"
+from config import ATTACHMENTS_DIR, USER_DATA_DIR
 
 from .utils import get_year_month, convert_path_for_platform
 

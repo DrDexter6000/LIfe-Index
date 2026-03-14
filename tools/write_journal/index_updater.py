@@ -11,20 +11,17 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-# 导入配置
+# 导入配置 - 使用绝对导入确保正确的 USER_DATA_DIR
 import sys
 
-TOOLS_DIR = Path(__file__).parent
-if str(TOOLS_DIR) not in sys.path:
-    sys.path.insert(0, str(TOOLS_DIR))
+TOOLS_LIB_DIR = Path(__file__).parent.parent / "lib"
+if str(TOOLS_LIB_DIR) not in sys.path:
+    sys.path.insert(0, str(TOOLS_LIB_DIR))
 
-try:
-    from lib.config import JOURNALS_DIR, BY_TOPIC_DIR
-except ImportError:
-    # 回退到项目目录（用于开发测试）
-    PROJECT_ROOT = Path(__file__).parent.parent
-    JOURNALS_DIR = PROJECT_ROOT / "journals"
-    BY_TOPIC_DIR = PROJECT_ROOT / "by-topic"
+from config import JOURNALS_DIR, BY_TOPIC_DIR, USER_DATA_DIR
+
+# Define write_journal directory for subprocess calls
+WRITE_JOURNAL_DIR = Path(__file__).parent
 
 
 def update_topic_index(
@@ -154,12 +151,17 @@ def update_monthly_abstract(
     result = {"abstract_path": None, "journal_count": 0, "updated": False}
 
     month_str = f"{year}-{month:02d}"
-    abstract_path = JOURNALS_DIR / str(year) / f"{month:02d}" / f"monthly_report_{year}-{month:02d}.md"
+    abstract_path = (
+        JOURNALS_DIR
+        / str(year)
+        / f"{month:02d}"
+        / f"monthly_report_{year}-{month:02d}.md"
+    )
 
     # 构建命令
     cmd = [
         sys.executable,
-        str(TOOLS_DIR / "generate_abstract.py"),
+        str(WRITE_JOURNAL_DIR / "generate_abstract.py"),
         "--month",
         month_str,
         "--json",

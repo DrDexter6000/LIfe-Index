@@ -7,26 +7,23 @@ Life Index - Write Journal Tool - Core
 from pathlib import Path
 from typing import Any, Dict
 
-# 导入配置
+# 导入配置 - 使用绝对导入确保正确的 USER_DATA_DIR
 import sys
+from pathlib import Path
 
-TOOLS_DIR = Path(__file__).parent
-if str(TOOLS_DIR) not in sys.path:
-    sys.path.insert(0, str(TOOLS_DIR))
+# 添加 tools 目录到路径
+TOOLS_LIB_DIR = Path(__file__).parent.parent / "lib"
+if str(TOOLS_LIB_DIR) not in sys.path:
+    sys.path.insert(0, str(TOOLS_LIB_DIR))
 
-try:
-    from lib.config import JOURNALS_DIR
-    from lib.file_lock import FileLock, LockTimeoutError, get_journals_lock_path
-    from lib.errors import ErrorCode, create_error_response
-    from lib.timing import Timer
-except ImportError:
-    # 回退到项目目录（用于开发测试）
-    PROJECT_ROOT = Path(__file__).parent.parent
-    JOURNALS_DIR = PROJECT_ROOT / "journals"
-    # 文件锁和错误模块的回退导入
-    from tools.lib.file_lock import FileLock, LockTimeoutError, get_journals_lock_path
-    from tools.lib.errors import ErrorCode, create_error_response
-    from tools.lib.timing import Timer
+from config import JOURNALS_DIR, USER_DATA_DIR
+from file_lock import FileLock, LockTimeoutError, get_journals_lock_path
+from errors import ErrorCode, create_error_response
+from timing import Timer
+from logger import get_logger
+
+# 初始化日志器
+logger = get_logger(__name__)
 
 # 导入子模块
 from .utils import get_year_month, generate_filename, get_next_sequence
@@ -82,7 +79,10 @@ def write_journal(data: Dict[str, Any], dry_run: bool = False) -> Dict[str, Any]
         # 验证必需字段
         date_str = data.get("date")
         if not date_str:
-            raise ValueError("缺少必需字段: date")
+            logger.error("缺少必需字段：date")
+            raise ValueError("缺少必需字段：date")
+
+        logger.info(f"开始写入日志：date={date_str}, title={data.get('title', 'N/A')}")
 
         # ===== 第一层：用户提及为准 =====
         # 如果用户提供了地点和天气，直接使用
@@ -105,6 +105,7 @@ def write_journal(data: Dict[str, Any], dry_run: bool = False) -> Dict[str, Any]
         weather = data.get("weather", "").strip()
         if not weather:
             # 尝试获取天气（使用英文格式的地点）
+            logger.debug(f"查询天气：location={location_for_weather}")
             with timer.measure("weather_query"):
                 queried_weather = query_weather_for_location(
                     location_for_weather, date_str
@@ -113,16 +114,20 @@ def write_journal(data: Dict[str, Any], dry_run: bool = False) -> Dict[str, Any]
                 weather = queried_weather
                 result["weather_used"] = weather
                 result["weather_auto_filled"] = True
+                logger.info(f"天气查询成功：{weather}")
             else:
                 weather = ""
                 result["weather_used"] = ""
+                logger.warning("天气查询失败，使用空值")
         else:
             result["weather_used"] = weather
+            logger.debug(f"使用用户提供的天气：{weather}")
 
         data["weather"] = weather
 
         # ===== 文件锁保护 =====
         # 使用文件锁保护序列号生成和写入操作，防止并发冲突
+        logger.debug("获取文件锁...")
         with timer.measure("lock_acquire"):
             lock = FileLock(get_journals_lock_path(), timeout=30.0)
 
@@ -147,8 +152,11 @@ def write_journal(data: Dict[str, Any], dry_run: bool = False) -> Dict[str, Any]
                         filename = generate_filename(date_str, sequence)
                         journal_path = month_dir / filename
 
+                        logger.debug(f"尝试生成文件名：{filename}, retry={retry}")
+
                         # 如果文件已存在且不是最后一次重试，重新获取序列号
                         if journal_path.exists() and retry < max_retries - 1:
+                            logger.debug(f"文件已存在，准备重试：{journal_path}")
                             continue  # 重试
                         break  # 文件不存在，或最后一次重试直接使用
 
@@ -159,6 +167,7 @@ def write_journal(data: Dict[str, Any], dry_run: bool = False) -> Dict[str, Any]
                 # 从内容中自动检测文件路径
                 content = data.get("content", "")
                 auto_detected_paths = extract_file_paths_from_content(content)
+                logger.debug(f"从内容中检测到 {len(auto_detected_paths)} 个附件路径")
 
                 # 处理附件（显式附件 + 自动检测附件）
                 attachments = data.get("attachments", [])
@@ -167,6 +176,8 @@ def write_journal(data: Dict[str, Any], dry_run: bool = False) -> Dict[str, Any]
                         attachments, date_str, dry_run, auto_detected_paths
                     )
                 result["attachments_processed"] = processed_attachments
+                if processed_attachments:
+                    logger.info(f"处理了 {len(processed_attachments)} 个附件")
 
                 # 更新数据中的附件信息（用于生成内容）
                 data["attachments"] = processed_attachments
@@ -194,6 +205,7 @@ def write_journal(data: Dict[str, Any], dry_run: bool = False) -> Dict[str, Any]
                 month_dir.mkdir(parents=True, exist_ok=True)
                 temp_path = journal_path.with_suffix(".tmp")
                 try:
+                    logger.info(f"写入日志文件：{journal_path}")
                     with timer.measure("file_write"):
                         with open(temp_path, "w", encoding="utf-8") as f:
                             f.write(full_content)
@@ -228,12 +240,14 @@ def write_journal(data: Dict[str, Any], dry_run: bool = False) -> Dict[str, Any]
 
                         except (OSError, IOError, RuntimeError) as e:
                             # 索引更新失败，清理临时文件
+                            logger.error(f"索引更新失败：{e}")
                             if temp_path.exists():
                                 temp_path.unlink()
-                            raise RuntimeError(f"索引更新失败，事务已回滚: {e}")
+                            raise RuntimeError(f"索引更新失败，事务已回滚：{e}")
 
                     # 5. 所有操作成功，原子性重命名临时文件
                     temp_path.replace(journal_path)
+                    logger.info(f"日志文件写入成功：{journal_path}")
 
                     # 记录结果
                     result["journal_path"] = str(journal_path)
@@ -250,9 +264,10 @@ def write_journal(data: Dict[str, Any], dry_run: bool = False) -> Dict[str, Any]
 
         except LockTimeoutError as e:
             # 锁超时，返回结构化错误
+            logger.error(f"文件锁超时：{e}")
             return create_error_response(
                 ErrorCode.LOCK_TIMEOUT,
-                f"无法获取写入锁，请稍后重试: {e}",
+                f"无法获取写入锁，请稍后重试：{e}",
                 {"lock_path": str(get_journals_lock_path()), "timeout": 30.0},
                 "等待几秒后重试，或检查是否有其他进程正在写入",
             )
@@ -271,11 +286,14 @@ def write_journal(data: Dict[str, Any], dry_run: bool = False) -> Dict[str, Any]
         )
 
     except (ValueError, IOError, RuntimeError, OSError) as e:
-        result["error"] = str(e)
+        logger.error(f"写入日志失败：{e}", exc_info=True)
         result["error"] = str(e)
 
     # 添加性能指标
     timer.stop()
     result["metrics"] = timer.to_dict()
+
+    if result["success"]:
+        logger.info(f"写入完成，总耗时：{result['metrics'].get('total_ms', 0):.2f}ms")
 
     return result
