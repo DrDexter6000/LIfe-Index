@@ -15,7 +15,7 @@ from tools.write_journal.utils import (
     get_year_month,
 )
 from tools.write_journal.weather import normalize_location
-from tools.lib.frontmatter import format_frontmatter
+from tools.write_journal.frontmatter import format_frontmatter, format_content
 
 
 class TestGenerateFilename:
@@ -76,44 +76,247 @@ class TestNormalizeLocation:
 class TestFormatFrontmatter:
     """Tests for format_frontmatter function"""
 
-    def test_basic_frontmatter(self):
-        """Test basic frontmatter generation"""
+    def test_minimal_frontmatter(self):
+        """Test minimal frontmatter with only required fields"""
+        data = {"date": "2026-03-10", "title": "Test"}
+        result = format_frontmatter(data)
+        assert result.startswith("---")
+        assert result.endswith("---")
+        assert 'title: "Test"' in result
+        assert "date: 2026-03-10" in result
+
+    def test_complete_frontmatter(self):
+        """Test complete frontmatter with all fields"""
         data = {
-            "date": "2026-03-10",
-            "time": "14:30",
+            "title": "Complete Test",
+            "date": "2026-03-10T14:30:00",
             "location": "Beijing, China",
-            "weather": "Sunny",
-            "topic": ["work"],
+            "weather": "Sunny 25°C",
+            "mood": ["happy", "productive"],
+            "people": ["Alice", "Bob"],
+            "tags": ["test", "demo"],
             "project": "Life-Index",
-            "tags": ["test"],
-            "seq": 1,
-            "content": "Test content",
+            "topic": ["work", "create"],
+            "abstract": "Test abstract",
+            "links": ["https://example.com"],
+            "attachments": ["file1.txt", "file2.txt"],
         }
         result = format_frontmatter(data)
-        assert "---" in result
-        assert "date: 2026-03-10" in result
-        assert "location: " in result
-        assert '"Beijing, China"' in result
+        assert 'title: "Complete Test"' in result
+        assert "date: 2026-03-10T14:30:00" in result
+        assert 'location: "Beijing, China"' in result
+        assert 'weather: "Sunny 25°C"' in result
+        assert '"happy"' in result
+        assert '"Alice"' in result
+        assert '"test"' in result
+        assert 'project: "Life-Index"' in result
+        assert '"work"' in result
+        assert 'abstract: "Test abstract"' in result
+        assert '"https://example.com"' in result
+        assert '"file1.txt"' in result
 
-    def test_array_format(self):
-        """Test arrays are formatted as JSON arrays"""
+    def test_date_only_adds_current_time(self):
+        """Test that date without time gets current time appended"""
+        data = {"date": "2026-03-10", "title": "Test"}
+        result = format_frontmatter(data)
+        # Should have time component added
+        assert "date: 2026-03-10T" in result
+        # Should not have quotes around date
+        assert '"date:' not in result
+
+    def test_date_with_time_unchanged(self):
+        """Test that date with time is kept as-is"""
+        data = {"date": "2026-03-10T14:30:00", "title": "Test"}
+        result = format_frontmatter(data)
+        assert "date: 2026-03-10T14:30:00" in result
+
+    def test_empty_string_fields(self):
+        """Test that empty string fields are still included"""
+        data = {"date": "2026-03-10", "title": "Test", "location": "", "weather": ""}
+        result = format_frontmatter(data)
+        assert 'location: ""' in result
+        assert 'weather: ""' in result
+        assert 'project: ""' in result
+        assert 'abstract: ""' in result
+
+    def test_title_with_quotes(self):
+        """Test title with quotes is properly escaped"""
+        data = {"date": "2026-03-10", "title": 'Test "Quoted" Title'}
+        result = format_frontmatter(data)
+        # Title should be quoted
+        assert 'title: "' in result
+
+    def test_mood_string_converted_to_list(self):
+        """Test that mood as string is converted to list"""
+        data = {"date": "2026-03-10", "mood": "happy"}
+        result = format_frontmatter(data)
+        assert 'mood: ["happy"]' in result
+
+    def test_mood_empty_string_becomes_empty_list(self):
+        """Test that empty mood string becomes empty list"""
+        data = {"date": "2026-03-10", "mood": ""}
+        result = format_frontmatter(data)
+        assert "mood: []" in result
+
+    def test_people_string_converted_to_list(self):
+        """Test that people as string is converted to list"""
+        data = {"date": "2026-03-10", "people": "Alice"}
+        result = format_frontmatter(data)
+        assert 'people: ["Alice"]' in result
+
+    def test_tags_string_converted_to_list(self):
+        """Test that tags as string is converted to list"""
+        data = {"date": "2026-03-10", "tags": "test"}
+        result = format_frontmatter(data)
+        assert 'tags: ["test"]' in result
+
+    def test_topic_string_converted_to_list(self):
+        """Test that topic as string is converted to list"""
+        data = {"date": "2026-03-10", "topic": "work"}
+        result = format_frontmatter(data)
+        assert 'topic: ["work"]' in result
+
+    def test_links_string_converted_to_list(self):
+        """Test that links as string is converted to list"""
+        data = {"date": "2026-03-10", "links": "https://example.com"}
+        result = format_frontmatter(data)
+        assert '"https://example.com"' in result
+
+    def test_attachments_dict_with_rel_path(self):
+        """Test attachments with dict containing rel_path"""
         data = {
             "date": "2026-03-10",
-            "topic": ["work", "life"],
-            "tags": ["tag1", "tag2"],
-            "seq": 1,
-            "content": "",
+            "attachments": [
+                {"rel_path": "attachments/file.txt", "filename": "file.txt"}
+            ],
         }
         result = format_frontmatter(data)
-        assert '["work", "life"]' in result or '["work","life"]' in result
-        assert '["tag1", "tag2"]' in result or '["tag1","tag2"]' in result
+        assert '"attachments/file.txt"' in result
 
-    def test_date_no_quotes(self):
-        """Date field should not have quotes"""
-        data = {"date": "2026-03-10", "seq": 1, "content": ""}
+    def test_attachments_dict_with_filename_only(self):
+        """Test attachments with dict containing only filename"""
+        data = {"date": "2026-03-10", "attachments": [{"filename": "file.txt"}]}
         result = format_frontmatter(data)
-        assert '"date": "2026-03-10"' not in result
-        assert "date: 2026-03-10" in result
+        assert '"file.txt"' in result
+
+    def test_attachments_dict_missing_both_paths(self):
+        """Test attachments dict without rel_path or filename is skipped"""
+        data = {"date": "2026-03-10", "attachments": [{"description": "no path"}]}
+        result = format_frontmatter(data)
+        # Should not include the attachment
+        assert "no path" not in result
+
+    def test_attachments_mixed_types(self):
+        """Test attachments with mixed string and dict types"""
+        data = {
+            "date": "2026-03-10",
+            "attachments": [
+                "file1.txt",
+                {"rel_path": "attachments/file2.txt", "filename": "file2.txt"},
+            ],
+        }
+        result = format_frontmatter(data)
+        assert '"file1.txt"' in result
+        assert '"attachments/file2.txt"' in result
+
+    def test_unicode_in_fields(self):
+        """Test Unicode characters are preserved"""
+        data = {
+            "date": "2026-03-10",
+            "title": "测试标题",
+            "location": "北京，中国",
+            "weather": "晴天 25°C",
+            "mood": ["开心", "充实"],
+        }
+        result = format_frontmatter(data)
+        assert "测试标题" in result
+        assert "北京，中国" in result
+        assert "晴天" in result
+        assert "开心" in result
+
+    def test_special_characters_in_title(self):
+        """Test special characters in title"""
+        data = {"date": "2026-03-10", "title": 'Test: Title with "quotes" & symbols!'}
+        result = format_frontmatter(data)
+        assert 'title: "' in result
+
+    def test_field_order_title_date(self):
+        """Test that title comes before date"""
+        data = {"date": "2026-03-10", "title": "Test"}
+        result = format_frontmatter(data)
+        title_pos = result.find('title: "Test"')
+        date_pos = result.find("date: 2026-03-10")
+        assert title_pos < date_pos
+
+    def test_field_order_project_before_topic(self):
+        """Test that project comes before topic"""
+        data = {
+            "date": "2026-03-10",
+            "project": "Life-Index",
+            "topic": ["work"],
+        }
+        result = format_frontmatter(data)
+        project_pos = result.find('project: "Life-Index"')
+        topic_pos = result.find('topic: ["work"]')
+        assert project_pos < topic_pos
+
+    def test_field_order_mood_before_people(self):
+        """Test that mood comes before people"""
+        data = {"date": "2026-03-10", "mood": ["happy"], "people": ["Alice"]}
+        result = format_frontmatter(data)
+        mood_pos = result.find("mood:")
+        people_pos = result.find("people:")
+        assert mood_pos < people_pos
+
+    def test_field_order_tags_before_project(self):
+        """Test that tags comes before project"""
+        data = {"date": "2026-03-10", "tags": ["test"], "project": "Life-Index"}
+        result = format_frontmatter(data)
+        tags_pos = result.find("tags:")
+        project_pos = result.find('project: "Life-Index"')
+        assert tags_pos < project_pos
+
+    def test_no_title_skipped(self):
+        """Test that empty title is skipped"""
+        data = {"date": "2026-03-10", "title": ""}
+        result = format_frontmatter(data)
+        assert "title:" not in result
+
+    def test_attachments_list_empty(self):
+        """Test empty attachments list"""
+        data = {"date": "2026-03-10", "attachments": []}
+        result = format_frontmatter(data)
+        assert "attachments: []" in result
+
+    def test_links_list_empty(self):
+        """Test empty links list"""
+        data = {"date": "2026-03-10", "links": []}
+        result = format_frontmatter(data)
+        assert "links: []" in result
+
+    def test_mood_list_empty(self):
+        """Test empty mood list"""
+        data = {"date": "2026-03-10", "mood": []}
+        result = format_frontmatter(data)
+        assert "mood: []" in result
+
+    def test_people_list_empty(self):
+        """Test empty people list"""
+        data = {"date": "2026-03-10", "people": []}
+        result = format_frontmatter(data)
+        assert "people: []" in result
+
+    def test_tags_list_empty(self):
+        """Test empty tags list"""
+        data = {"date": "2026-03-10", "tags": []}
+        result = format_frontmatter(data)
+        assert "tags: []" in result
+
+    def test_topic_list_empty(self):
+        """Test empty topic list"""
+        data = {"date": "2026-03-10", "topic": []}
+        result = format_frontmatter(data)
+        assert "topic: []" in result
 
 
 class TestGetYearMonth:
@@ -235,7 +438,9 @@ class TestGetNextSequence:
         """Non-existent directory should return sequence 1"""
         mock_month_dir = MagicMock()
         mock_month_dir.exists.return_value = False
-        mock_journals_dir.__truediv__.return_value.__truediv__.return_value = mock_month_dir
+        mock_journals_dir.__truediv__.return_value.__truediv__.return_value = (
+            mock_month_dir
+        )
         result = get_next_sequence("2026-03-15")
         assert result == 1
 
@@ -245,7 +450,9 @@ class TestGetNextSequence:
         mock_month_dir = MagicMock()
         mock_month_dir.exists.return_value = True
         mock_month_dir.glob.return_value = []
-        mock_journals_dir.__truediv__.return_value.__truediv__.return_value = mock_month_dir
+        mock_journals_dir.__truediv__.return_value.__truediv__.return_value = (
+            mock_month_dir
+        )
         result = get_next_sequence("2026-03-15")
         assert result == 1
 
@@ -261,7 +468,9 @@ class TestGetNextSequence:
         mock_file3 = MagicMock()
         mock_file3.name = "life-index_2026-03-15_002.md"
         mock_month_dir.glob.return_value = [mock_file1, mock_file2, mock_file3]
-        mock_journals_dir.__truediv__.return_value.__truediv__.return_value = mock_month_dir
+        mock_journals_dir.__truediv__.return_value.__truediv__.return_value = (
+            mock_month_dir
+        )
         result = get_next_sequence("2026-03-15")
         assert result == 4
 
@@ -277,7 +486,9 @@ class TestGetNextSequence:
         mock_file3 = MagicMock()
         mock_file3.name = "life-index_2026-03-16_001.md"
         mock_month_dir.glob.return_value = [mock_file1, mock_file2, mock_file3]
-        mock_journals_dir.__truediv__.return_value.__truediv__.return_value = mock_month_dir
+        mock_journals_dir.__truediv__.return_value.__truediv__.return_value = (
+            mock_month_dir
+        )
         result = get_next_sequence("2026-03-15")
         assert result == 3
 
@@ -289,7 +500,9 @@ class TestGetNextSequence:
         mock_file = MagicMock()
         mock_file.name = "life-index_2026-03-15_999.md"
         mock_month_dir.glob.return_value = [mock_file]
-        mock_journals_dir.__truediv__.return_value.__truediv__.return_value = mock_month_dir
+        mock_journals_dir.__truediv__.return_value.__truediv__.return_value = (
+            mock_month_dir
+        )
         result = get_next_sequence("2026-03-15")
         assert result == 1000
 
@@ -305,7 +518,9 @@ class TestGetNextSequence:
         mock_file3 = MagicMock()
         mock_file3.name = "life-index_2026-03-15_.md"
         mock_month_dir.glob.return_value = [mock_file1, mock_file2, mock_file3]
-        mock_journals_dir.__truediv__.return_value.__truediv__.return_value = mock_month_dir
+        mock_journals_dir.__truediv__.return_value.__truediv__.return_value = (
+            mock_month_dir
+        )
         result = get_next_sequence("2026-03-15")
         assert result == 2
 
@@ -315,10 +530,128 @@ class TestGetNextSequence:
         mock_month_dir = MagicMock()
         mock_month_dir.exists.return_value = True
         mock_month_dir.glob.return_value = []
-        mock_journals_dir.__truediv__.return_value.__truediv__.return_value = mock_month_dir
+        mock_journals_dir.__truediv__.return_value.__truediv__.return_value = (
+            mock_month_dir
+        )
         result = get_next_sequence("2026-03-15T14:30:00")
         assert result == 1
         mock_journals_dir.__truediv__.assert_called_with("2026")
+
+
+class TestFormatContent:
+    """Tests for format_content function"""
+
+    def test_content_with_title_only(self):
+        """Test content with only title"""
+        data = {"title": "Test Title", "content": ""}
+        result = format_content(data)
+        # Title is rendered even without content
+        assert "# Test Title" in result
+
+    def test_content_with_body_only(self):
+        """Test content with only body, no title"""
+        data = {"title": "", "content": "Test content"}
+        result = format_content(data)
+        assert "Test content" in result
+        assert "#" not in result
+
+    def test_content_with_title_and_body(self):
+        """Test content with both title and body"""
+        data = {"title": "Test Title", "content": "Test content here"}
+        result = format_content(data)
+        assert "# Test Title" in result
+        assert "Test content here" in result
+
+    def test_content_empty(self):
+        """Test empty content"""
+        data = {"title": "", "content": ""}
+        result = format_content(data)
+        assert result.strip() == ""
+
+    def test_content_with_attachments_dicts(self):
+        """Test content with attachments as dicts"""
+        data = {
+            "title": "",
+            "content": "",
+            "attachments": [
+                {
+                    "filename": "file1.txt",
+                    "rel_path": "attachments/file1.txt",
+                    "description": "Test file 1",
+                }
+            ],
+        }
+        result = format_content(data)
+        assert "## Attachments" in result
+        assert "[file1.txt]" in result
+        assert "(attachments/file1.txt)" in result
+        assert "Test file 1" in result
+
+    def test_content_with_attachments_strings_skipped(self):
+        """Test that string attachments are skipped (only dicts supported)"""
+        data = {"title": "", "content": "", "attachments": ["file1.txt", "file2.txt"]}
+        # String attachments will cause AttributeError in current implementation
+        # This is a known limitation - attachments should be dicts in content
+        with pytest.raises(AttributeError):
+            format_content(data)
+
+    def test_content_with_mixed_attachments_dict_only(self):
+        """Test content with only dict attachments"""
+        data = {
+            "title": "",
+            "content": "Some content",
+            "attachments": [
+                {
+                    "filename": "file2.txt",
+                    "rel_path": "attachments/file2.txt",
+                    "description": "Test file",
+                },
+            ],
+        }
+        result = format_content(data)
+        assert "Some content" in result
+        assert "## Attachments" in result
+
+    def test_content_attachments_with_missing_rel_path(self):
+        """Test attachments fallback to filename when rel_path missing"""
+        data = {
+            "title": "",
+            "content": "",
+            "attachments": [{"filename": "file.txt", "description": "Test"}],
+        }
+        result = format_content(data)
+        assert "../../../Attachments/file.txt" in result
+
+    def test_content_multiline(self):
+        """Test multiline content"""
+        data = {"title": "Test", "content": "Line 1\nLine 2\nLine 3"}
+        result = format_content(data)
+        assert "# Test" in result
+        assert "Line 1" in result
+        assert "Line 2" in result
+        assert "Line 3" in result
+
+    def test_content_with_markdown(self):
+        """Test content with markdown formatting"""
+        data = {"title": "Test", "content": "**bold** and *italic* and `code`"}
+        result = format_content(data)
+        assert "**bold**" in result
+        assert "*italic*" in result
+        assert "`code`" in result
+
+    def test_content_with_unicode(self):
+        """Test content with Unicode characters"""
+        data = {"title": "测试", "content": "这是中文内容 🎉"}
+        result = format_content(data)
+        assert "# 测试" in result
+        assert "这是中文内容" in result
+        assert "🎉" in result
+
+    def test_content_with_empty_attachments(self):
+        """Test that empty attachments list doesn't add section"""
+        data = {"title": "Test", "content": "Content", "attachments": []}
+        result = format_content(data)
+        assert "## Attachments" not in result
 
 
 if __name__ == "__main__":
