@@ -11,11 +11,16 @@ Usage:
 
 import argparse
 import json
+import logging
 import sys
 import urllib.request
 import urllib.parse
 from datetime import datetime, timedelta
 from typing import Dict, Optional, Any
+
+from tools.lib.logger import get_logger
+
+logger = get_logger(__name__)
 
 # Open-Meteo API 端点
 GEOCODING_API = "https://geocoding-api.open-meteo.com/v1/search"
@@ -46,10 +51,14 @@ def geocode_location(location: str) -> Optional[Dict[str, Any]]:
             data = json.loads(response.read().decode("utf-8"))
 
         if not data.get("results"):
+            logger.debug(f"No results found for location: {location}")
             return None
 
         # 返回第一个结果
         result = data["results"][0]
+        logger.debug(
+            f"Geocoded location: {result.get('name')} ({result.get('latitude')}, {result.get('longitude')})"
+        )
         return {
             "name": result.get("name", ""),
             "latitude": result.get("latitude", 0),
@@ -64,6 +73,7 @@ def geocode_location(location: str) -> Optional[Dict[str, Any]]:
         json.JSONDecodeError,
         TimeoutError,
     ) as e:
+        logger.error(f"Geocoding failed: {e}")
         return {"error": str(e)}
 
 
@@ -186,11 +196,15 @@ def query_weather(
         daily = data.get("daily", {})
 
         if not daily or not daily.get("weather_code"):
+            logger.warning(
+                f"No weather data available for {date} at ({latitude}, {longitude})"
+            )
             result["error"] = "No weather data available for this date"
             return result
 
         weather_code = daily["weather_code"][0]
         description = get_weather_code_description(weather_code)
+        logger.info(f"Weather retrieved for {date}: {description}")
 
         result["weather"] = {
             "code": weather_code,
@@ -203,10 +217,13 @@ def query_weather(
         result["success"] = True
 
     except urllib.error.HTTPError as e:
+        logger.error(f"Weather API error: {e.code} - {e.reason}")
         result["error"] = f"API error: {e.code} - {e.reason}"
     except urllib.error.URLError as e:
+        logger.error(f"Weather network error: {e.reason}")
         result["error"] = f"Network error: {e.reason}"
     except (json.JSONDecodeError, KeyError, IndexError) as e:
+        logger.error(f"Weather data parsing error: {e}")
         result["error"] = str(e)
 
     return result

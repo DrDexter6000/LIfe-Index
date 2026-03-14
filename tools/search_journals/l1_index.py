@@ -30,7 +30,7 @@ def scan_all_indices() -> List[Dict[str, Any]]:
         try:
             content = index_file.read_text(encoding="utf-8")
             # 解析索引条目: - [YYYY-MM-DD 标题](路径)
-            pattern = r"- \[(\d{4}-\d{2}-\d{2})\s+([^\]]+)\]\(([^)]+)\)"
+            pattern = r"- \[(\d{4}-\d{2}-\d{2})\] \[(.*?)\]\((.*?)\)"
             matches = re.findall(pattern, content)
 
             for date_str, title, path in matches:

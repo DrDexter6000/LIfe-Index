@@ -28,8 +28,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
-# 导入配置 (relative imports from parent tools package)
+# 导入配置和日志 (relative imports from parent tools package)
 from ..lib.config import JOURNALS_DIR
+from ..lib.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 def parse_frontmatter(file_path: Path) -> Optional[Dict]:
@@ -128,8 +131,10 @@ def collect_month_journals(year: int, month: int) -> List[Dict]:
     month_dir = JOURNALS_DIR / str(year) / f"{month:02d}"
 
     if not month_dir.exists():
+        logger.debug(f"目录不存在：{month_dir}")
         return journals
 
+    logger.debug(f"扫描目录：{month_dir}")
     for journal_file in sorted(month_dir.glob("life-index_*.md")):
         metadata = parse_frontmatter(journal_file)
         if metadata:
@@ -157,8 +162,10 @@ def collect_year_journals(year: int) -> List[Dict]:
     year_dir = JOURNALS_DIR / str(year)
 
     if not year_dir.exists():
+        logger.debug(f"目录不存在：{year_dir}")
         return journals
 
+    logger.debug(f"扫描目录：{year_dir}")
     # 遍历所有月份目录
     for month_dir in sorted(year_dir.iterdir()):
         if not month_dir.is_dir():
@@ -436,8 +443,32 @@ def generate_monthly_abstract(
     result["journal_count"] = len(journals)
 
     if not journals:
+        logger.info(f"{year}年{month:02d}月没有日志记录")
         result["message"] = f"{year}年{month:02d}月没有日志记录"
         return result
+
+    # 生成月度摘要内容
+    content = generate_monthly_abstract_content(year, month, journals)
+    result["abstract_path"] = str(abstract_path)
+
+    if dry_run:
+        logger.info(f"[预览] 将生成月度摘要：{abstract_path}")
+        result["message"] = f"[预览] 将生成月度摘要：{abstract_path}"
+        return result
+
+    # 确保目录存在
+    month_dir.mkdir(parents=True, exist_ok=True)
+
+    # 写入摘要文件
+    logger.debug(f"写入月度摘要：{abstract_path}")
+    with open(abstract_path, "w", encoding="utf-8") as f:
+        f.write(content)
+
+    result["updated"] = True
+    result["message"] = f"月度摘要已保存：{abstract_path}"
+    logger.info(f"月度摘要已保存：{abstract_path}")
+
+    return result
 
     # 生成月度摘要内容
     content = generate_monthly_abstract_content(year, month, journals)
@@ -477,8 +508,32 @@ def generate_yearly_abstract(year: int, dry_run: bool = False) -> Dict[str, Any]
     result["journal_count"] = len(journals)
 
     if not journals:
+        logger.info(f"{year}年没有日志记录")
         result["message"] = f"{year}年没有日志记录"
         return result
+
+    # 生成年度摘要内容
+    content = generate_yearly_abstract_content(year, journals)
+    result["abstract_path"] = str(abstract_path)
+
+    if dry_run:
+        logger.info(f"[预览] 将生成年度摘要：{abstract_path}")
+        result["message"] = f"[预览] 将生成年度摘要：{abstract_path}"
+        return result
+
+    # 确保目录存在
+    abstract_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # 写入摘要文件
+    logger.debug(f"写入年度摘要：{abstract_path}")
+    with open(abstract_path, "w", encoding="utf-8") as f:
+        f.write(content)
+
+    result["updated"] = True
+    result["message"] = f"年度摘要已保存：{abstract_path}"
+    logger.info(f"年度摘要已保存：{abstract_path}")
+
+    return result
 
     # 生成年度摘要内容
     content = generate_yearly_abstract_content(year, journals)
@@ -553,19 +608,22 @@ Examples:
     if args.month:
         try:
             year, month = map(int, args.month.split("-"))
+            logger.info(f"生成月度摘要：{year}年{month:02d}月")
             result = generate_monthly_abstract(year, month, args.dry_run)
             results.append(result)
         except ValueError:
-            print(f"错误: --month 参数格式应为 YYYY-MM (如 2026-03)", file=sys.stderr)
+            logger.error(f"--month 参数格式应为 YYYY-MM (如 2026-03)")
             sys.exit(1)
 
     # 生成年度摘要
     if args.year and not args.all_months:
+        logger.info(f"生成年度摘要：{args.year}年")
         result = generate_yearly_abstract(args.year, args.dry_run)
         results.append(result)
 
     # 批量生成全年月度摘要
     if args.year and args.all_months:
+        logger.info(f"批量生成{args.year}年全年月度摘要")
         year_dir = JOURNALS_DIR / str(args.year)
         if year_dir.exists():
             for month_dir in sorted(year_dir.iterdir()):
@@ -574,6 +632,7 @@ Examples:
                     result = generate_monthly_abstract(args.year, month, args.dry_run)
                     results.append(result)
         else:
+            logger.warning(f"{args.year}年目录不存在")
             results.append(
                 {
                     "type": "monthly",

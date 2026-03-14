@@ -37,6 +37,9 @@ from ..lib.frontmatter import (
 )
 from ..lib.file_lock import FileLock, LockTimeoutError, get_journals_lock_path
 from ..lib.errors import ErrorCode, create_error_response
+from ..lib.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 def parse_journal(file_path: Path) -> Tuple[Dict[str, Any], str]:
@@ -64,11 +67,13 @@ def remove_from_index(index_file: Path, journal_filename: str) -> bool:
     for line in lines:
         if journal_filename in line and line.strip().startswith("- ["):
             removed = True
+            logger.debug(f"从索引移除：{journal_filename}")
             continue
         new_lines.append(line)
 
     if removed:
         index_file.write_text("\n".join(new_lines), encoding="utf-8")
+        logger.info(f"已更新索引文件：{index_file.name}")
 
     return removed
 
@@ -88,6 +93,7 @@ def add_to_index(index_file: Path, journal_path: Path, data: Dict[str, Any]) -> 
         if entry not in content:
             with open(index_file, "a", encoding="utf-8") as f:
                 f.write(entry + "\n")
+            logger.debug(f"添加条目到索引：{index_file.name}")
     else:
         # 确定索引类型和名称
         name = (
@@ -96,16 +102,17 @@ def add_to_index(index_file: Path, journal_path: Path, data: Dict[str, Any]) -> 
             .replace("标签_", "")
         )
         if index_file.stem.startswith("主题_"):
-            header = f"# 主题: {name}\n\n"
+            header = f"# 主题：{name}\n\n"
         elif index_file.stem.startswith("项目_"):
-            header = f"# 项目: {name}\n\n"
+            header = f"# 项目：{name}\n\n"
         elif index_file.stem.startswith("标签_"):
-            header = f"# 标签: {name}\n\n"
+            header = f"# 标签：{name}\n\n"
         else:
             header = f"# {name}\n\n"
 
         with open(index_file, "w", encoding="utf-8") as f:
             f.write(header + entry + "\n")
+        logger.info(f"创建索引文件：{index_file.name}")
 
 
 def update_indices_for_change(
@@ -126,6 +133,7 @@ def update_indices_for_change(
     for topic in old_topics:
         if topic and topic not in new_topics:
             idx_file = BY_TOPIC_DIR / f"主题_{topic}.md"
+            logger.info(f"检测到 topic 变更：{topic} -> 移除")
             if remove_from_index(idx_file, journal_filename):
                 updated_indices.append(str(idx_file))
 
@@ -133,6 +141,7 @@ def update_indices_for_change(
     for topic in new_topics:
         if topic:
             idx_file = BY_TOPIC_DIR / f"主题_{topic}.md"
+            logger.info(f"检测到 topic 变更：添加 {topic}")
             add_to_index(idx_file, journal_path, new_data)
             if str(idx_file) not in updated_indices:
                 updated_indices.append(str(idx_file))
@@ -142,6 +151,7 @@ def update_indices_for_change(
     new_project = new_data.get("project", "")
 
     if old_project != new_project:
+        logger.info(f"检测到 project 变更：{old_project} -> {new_project}")
         # 移除旧 project 索引
         if old_project:
             idx_file = BY_TOPIC_DIR / f"项目_{old_project}.md"
@@ -164,6 +174,7 @@ def update_indices_for_change(
     for tag in old_tags - new_tags:
         if tag:
             idx_file = BY_TOPIC_DIR / f"标签_{tag}.md"
+            logger.debug(f"检测到 tag 移除：{tag}")
             if remove_from_index(idx_file, journal_filename):
                 if str(idx_file) not in updated_indices:
                     updated_indices.append(str(idx_file))
@@ -172,6 +183,7 @@ def update_indices_for_change(
     for tag in new_tags - old_tags:
         if tag:
             idx_file = BY_TOPIC_DIR / f"标签_{tag}.md"
+            logger.debug(f"检测到 tag 添加：{tag}")
             add_to_index(idx_file, journal_path, new_data)
             if str(idx_file) not in updated_indices:
                 updated_indices.append(str(idx_file))
@@ -227,10 +239,13 @@ def edit_journal(
     }
 
     try:
-        if not journal_path.exists():
-            raise FileNotFoundError(f"日志文件不存在: {journal_path}")
+        logger.info(f"开始编辑日志：{journal_path.name}")
 
-        # 使用 lib/frontmatter 更新
+        if not journal_path.exists():
+            logger.error(f"日志文件不存在：{journal_path}")
+            raise FileNotFoundError(f"日志文件不存在：{journal_path}")
+
+        # 使用 lib-frontmatter 更新
         # 构建完整数据用于格式化
         metadata = parse_journal_file(journal_path)
         old_frontmatter = {k: v for k, v in metadata.items() if not k.startswith("_")}
@@ -246,24 +261,29 @@ def edit_journal(
                 if key in new_frontmatter:
                     del new_frontmatter[key]
                     result["changes"][key] = {"old": old_value, "new": None}
+                    logger.debug(f"删除字段：{key}")
             else:
                 new_frontmatter[key] = value
                 if old_value != value:
                     result["changes"][key] = {"old": old_value, "new": value}
+                    logger.debug(f"更新字段：{key} = {value}")
 
         # 处理正文修改
         new_body = old_body
         if replace_content is not None:
             new_body = replace_content
             result["content_modified"] = True
+            logger.info("替换正文内容")
         elif append_content is not None:
             if old_body:
                 new_body = old_body + "\n\n" + append_content
             else:
                 new_body = append_content
             result["content_modified"] = True
+            logger.info("追加正文内容")
 
         if dry_run:
+            logger.info("模拟运行模式（dry-run）")
             result["success"] = True
             result["preview"] = {
                 "frontmatter": format_frontmatter(new_frontmatter),
@@ -279,29 +299,36 @@ def edit_journal(
 
         try:
             with lock:
+                logger.debug("获取文件锁成功")
                 # 写入文件
                 new_content = format_frontmatter(new_frontmatter) + "\n\n" + new_body
                 journal_path.write_text(new_content, encoding="utf-8")
+                logger.info(f"已写入文件：{journal_path.name}")
 
                 # 更新索引（如果相关字段变更）
                 if any(k in result["changes"] for k in ["topic", "project", "tags"]):
+                    logger.info("检测到索引相关字段变更，更新索引...")
                     updated = update_indices_for_change(
                         journal_path, old_frontmatter, new_frontmatter
                     )
                     result["indices_updated"] = updated
+                    logger.info(f"已更新 {len(updated)} 个索引文件")
 
         except LockTimeoutError as e:
             # 锁超时，返回结构化错误
+            logger.error(f"文件锁超时：{e}")
             return create_error_response(
                 ErrorCode.LOCK_TIMEOUT,
-                f"无法获取写入锁，请稍后重试: {e}",
+                f"无法获取写入锁，请稍后重试：{e}",
                 {"lock_path": str(get_journals_lock_path()), "timeout": 30.0},
                 "等待几秒后重试，或检查是否有其他进程正在编辑",
             )
 
         result["success"] = True
+        logger.info(f"编辑完成：{journal_path.name}")
 
     except Exception as e:
+        logger.error(f"编辑失败：{e}")
         result["error"] = str(e)
 
     return result
@@ -362,6 +389,9 @@ Examples:
 
     args = parser.parse_args()
 
+    if args.verbose:
+        logger.info("启用详细日志模式")
+
     # 解析日志路径
     journal_path = Path(args.journal)
     if not journal_path.is_absolute():
@@ -370,6 +400,8 @@ Examples:
 
         base_dir = USER_DATA_DIR
         journal_path = base_dir / journal_path
+
+    logger.debug(f"日志路径：{journal_path}")
 
     # 收集 frontmatter 更新
     frontmatter_updates = {}
@@ -403,6 +435,8 @@ Examples:
     if args.set_abstract is not None:
         frontmatter_updates["abstract"] = args.set_abstract
 
+    logger.debug(f"Frontmatter 更新：{list(frontmatter_updates.keys())}")
+
     # 执行编辑
     result = edit_journal(
         journal_path=journal_path,
@@ -412,8 +446,13 @@ Examples:
         dry_run=args.dry_run,
     )
 
-    # 输出结果
+    # 输出结果（保持 JSON 输出到 stdout）
     print(json.dumps(result, ensure_ascii=False, indent=2))
+
+    if result["success"]:
+        logger.info("工具执行成功")
+    else:
+        logger.error(f"工具执行失败：{result.get('error')}")
 
     sys.exit(0 if result["success"] else 1)
 

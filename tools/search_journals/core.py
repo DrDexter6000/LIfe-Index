@@ -16,6 +16,16 @@ from .l3_content import search_l3_content
 from .semantic import search_semantic
 from .ranking import merge_and_rank_results, merge_and_rank_results_hybrid
 
+# 导入 logger
+try:
+    from ..lib.logger import get_logger
+
+    logger = get_logger("search_journals")
+except ImportError:
+    import logging
+
+    logger = logging.getLogger("search_journals")
+
 
 def hierarchical_search(
     query: Optional[str] = None,
@@ -169,11 +179,9 @@ def hierarchical_search(
                         }
                         for r in fts_results
                     ]
-                    print(
-                        f"Debug: FTS found {len(l3_results)} results", file=sys.stderr
-                    )
+                    logger.debug(f"FTS found {len(l3_results)} results")
             except (ImportError, OSError) as e:
-                print(f"Debug: FTS error: {e}", file=sys.stderr)
+                logger.debug(f"FTS error: {e}")
                 # FTS 失败时回退到文件系统扫描
                 pass
 
@@ -185,7 +193,7 @@ def hierarchical_search(
             l3_results = search_l3_content(
                 query, candidate_paths if candidate_paths else None
             )
-            print(f"Debug: File scan found {len(l3_results)} results", file=sys.stderr)
+            logger.debug(f"File scan found {len(l3_results)} results")
 
     result["l3_results"] = l3_results
 
@@ -197,10 +205,7 @@ def hierarchical_search(
         semantic_start = time.time()
         semantic_results = search_semantic(query, date_from or "", date_to or "")
         if semantic_results:
-            print(
-                f"Debug: Semantic found {len(semantic_results)} results",
-                file=sys.stderr,
-            )
+            logger.debug(f"Semantic found {len(semantic_results)} results")
         result["performance"]["semantic_time_ms"] = round(
             (time.time() - semantic_start) * 1000, 2
         )

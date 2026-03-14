@@ -35,6 +35,10 @@ from ..lib.search_index import (
 from ..lib.semantic_search import update_vector_index, get_stats as get_vec_stats
 from ..lib.file_lock import FileLock, LockTimeoutError, get_index_lock_path
 from ..lib.errors import ErrorCode, create_error_response
+from ..lib.logger import get_logger
+
+# 获取日志器
+logger = get_logger("build_index")
 
 
 def build_all(
@@ -65,27 +69,27 @@ def build_all(
         with lock:
             # 更新 FTS 索引
             if not vec_only:
-                print("Updating FTS index...")
+                logger.info("Updating FTS index...")
                 try:
                     fts_result = update_fts_index(incremental=incremental)
                     result["fts"] = fts_result
                     if fts_result.get("success"):
-                        print(
+                        logger.info(
                             f"  ✓ FTS: +{fts_result.get('added', 0)} added, "
                             f"~{fts_result.get('updated', 0)} updated, "
                             f"-{fts_result.get('removed', 0)} removed"
                         )
                     else:
-                        print(f"  ✗ FTS failed: {fts_result.get('error')}")
+                        logger.warning(f"  ✗ FTS failed: {fts_result.get('error')}")
                         result["success"] = False
                 except (RuntimeError, IOError, OSError) as e:
-                    print(f"  ✗ FTS error: {e}")
+                    logger.error(f"  ✗ FTS error: {e}")
                     result["fts"] = {"success": False, "error": str(e)}
                     result["success"] = False
 
             # 更新向量索引
             if not fts_only:
-                print("Updating vector index...")
+                logger.info("Updating vector index...")
                 vec_success = False
 
                 # 首先尝试 sqlite-vec
@@ -97,7 +101,7 @@ def build_all(
                         vec_result = update_vector_index(incremental=incremental)
                         if vec_result.get("success"):
                             result["vector"] = vec_result
-                            print(
+                            logger.info(
                                 f"  ✓ Vector (sqlite-vec): +{vec_result.get('added', 0)} added, "
                                 f"~{vec_result.get('updated', 0)} updated"
                             )
@@ -120,20 +124,20 @@ def build_all(
                             )
                             result["vector"] = vec_result
                             if vec_result.get("success"):
-                                print(
+                                logger.info(
                                     f"  ✓ Vector (simple): +{vec_result.get('added', 0)} added, "
                                     f"~{vec_result.get('updated', 0)} updated"
                                 )
                             else:
-                                print(
+                                logger.warning(
                                     f"  ⚠ Vector (simple): {vec_result.get('error', 'Unknown error')}"
                                 )
                         else:
-                            print(
+                            logger.info(
                                 f"  ⚠ Embedding model not available. Install: pip install sentence-transformers"
                             )
                     except (RuntimeError, IOError, OSError) as e:
-                        print(f"  ✗ Vector error: {e}")
+                        logger.error(f"  ✗ Vector error: {e}")
                         result["vector"] = {"success": False, "error": str(e)}
 
     except LockTimeoutError as e:
@@ -146,37 +150,39 @@ def build_all(
         )
 
     result["duration_seconds"] = round(time.time() - start_time, 2)
-    print(f"\nCompleted in {result['duration_seconds']}s")
+    logger.info(f"Completed in {result['duration_seconds']}s")
 
     return result
 
 
 def show_stats() -> None:
     """显示索引统计信息"""
-    print("=" * 50)
-    print("Life Index - Search Index Statistics")
-    print("=" * 50)
+    logger.info("=" * 50)
+    logger.info("Life Index - Search Index Statistics")
+    logger.info("=" * 50)
 
-    print("\n📚 FTS Index (Full-Text Search):")
+    logger.info("\n📚 FTS Index (Full-Text Search):")
     fts_stats = get_fts_stats()
-    print(f"  Exists: {'Yes' if fts_stats['exists'] else 'No'}")
-    print(f"  Documents: {fts_stats['total_documents']}")
-    print(f"  Size: {fts_stats['db_size_mb']} MB")
+    logger.info(f"  Exists: {'Yes' if fts_stats['exists'] else 'No'}")
+    logger.info(f"  Documents: {fts_stats['total_documents']}")
+    logger.info(f"  Size: {fts_stats['db_size_mb']} MB")
     if fts_stats["last_updated"]:
-        print(f"  Last Updated: {fts_stats['last_updated']}")
+        logger.info(f"  Last Updated: {fts_stats['last_updated']}")
 
-    print("\n🧠 Vector Index (Semantic Search):")
+    logger.info("\n🧠 Vector Index (Semantic Search):")
     # 尝试获取 sqlite-vec 统计
     try:
         from ..lib.semantic_search import get_stats as get_vec_stats
 
         vec_stats = get_vec_stats()
         if vec_stats["exists"] and vec_stats["total_vectors"] > 0:
-            print(f"  Backend: sqlite-vec")
-            print(f"  Exists: Yes")
-            print(f"  Vectors: {vec_stats['total_vectors']}")
-            print(f"  Size: {vec_stats['db_size_mb']} MB")
-            print(f"  Model Loaded: {'Yes' if vec_stats['model_loaded'] else 'No'}")
+            logger.info(f"  Backend: sqlite-vec")
+            logger.info(f"  Exists: Yes")
+            logger.info(f"  Vectors: {vec_stats['total_vectors']}")
+            logger.info(f"  Size: {vec_stats['db_size_mb']} MB")
+            logger.info(
+                f"  Model Loaded: {'Yes' if vec_stats['model_loaded'] else 'No'}"
+            )
         else:
             # 尝试获取简单向量索引统计
             raise Exception("sqlite-vec not available")
@@ -186,24 +192,24 @@ def show_stats() -> None:
 
             simple_index = get_index()
             simple_stats = simple_index.stats()
-            print(f"  Backend: simple_numpy")
-            print(f"  Exists: {'Yes' if simple_stats['exists'] else 'No'}")
-            print(f"  Vectors: {simple_stats['total_vectors']}")
-            print(f"  Size: {simple_stats['index_size_mb']} MB")
+            logger.info(f"  Backend: simple_numpy")
+            logger.info(f"  Exists: {'Yes' if simple_stats['exists'] else 'No'}")
+            logger.info(f"  Vectors: {simple_stats['total_vectors']}")
+            logger.info(f"  Size: {simple_stats['index_size_mb']} MB")
         except (ImportError, RuntimeError) as e:
-            print(f"  Status: Not available")
-            print(f"  Note: Install sentence-transformers for semantic search")
+            logger.info(f"  Status: Not available")
+            logger.info(f"  Note: Install sentence-transformers for semantic search")
 
-    print("\n💾 Cache Directory:")
+    logger.info("\n💾 Cache Directory:")
     cache_dir = USER_DATA_DIR / ".cache" / "models"
     if cache_dir.exists():
         total_size = sum(f.stat().st_size for f in cache_dir.rglob("*") if f.is_file())
-        print(f"  Location: {cache_dir}")
-        print(f"  Size: {round(total_size / (1024 * 1024), 2)} MB")
+        logger.info(f"  Location: {cache_dir}")
+        logger.info(f"  Size: {round(total_size / (1024 * 1024), 2)} MB")
     else:
-        print("  Not created yet")
+        logger.info("  Not created yet")
 
-    print("=" * 50)
+    logger.info("=" * 50)
 
 
 def main() -> None:
