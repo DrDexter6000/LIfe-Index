@@ -64,7 +64,13 @@ def test_upgrade_apply_reinstall_required_is_valid_v0_json_and_exit_one(
     from tools.upgrade import core
 
     class ReadOnlyRunner:
-        def run(self, command: list[str], *, cwd: Path | None = None) -> core.CommandResult:
+        def run(
+            self,
+            command: list[str],
+            *,
+            cwd: Path | None = None,
+            env: dict[str, str] | None = None,
+        ) -> core.CommandResult:
             joined = " ".join(command)
             if "health --json" in joined:
                 payload = {"success": True, "schema_version": "m16.health.v0"}

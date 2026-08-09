@@ -111,14 +111,15 @@ triggers:
   `IMPORT_WRITE_FAILURE` 盲目外层重试——仍按 envelope 的 `recovery_required` / `retryable`
   行事，真实失败保持零半成品、源照片不变。
 **安装 / 首次验证 / 故障恢复指针**：
-- 首次安装、upgrade、repair、fresh install 判断 → 读 `AGENT_ONBOARDING.md`，运行 `bootstrap --json`，按 `execution_policy` / `needs_human` / `safe_next_steps` 执行
+- 已有程序升级只运行 `life-index upgrade --plan --json`；不得把 `bootstrap` 当作程序升级命令。首次安装、repair、fresh install 判断 → 读 `AGENT_ONBOARDING.md`，在对应生命周期内运行 `bootstrap --json`
 - `ModuleNotFoundError`、venv 损坏、`health` 异常、Windows 首次写入转义问题 → 先回到 `bootstrap --json` 输出，不自行扩写 repair 决策树
 - 写入成功后的状态字段解释（`needs_confirmation` / `index_status` / `side_effects_status` / 附件处理计数）→ 读 `docs/API.md` 中 `write_journal` 返回语义
 - If an installed Skill cannot access repository docs, run the exact `life-index <command> --help` for that installed command and do not guess options.
 **会话 freshness / 运维纪律（升级摩擦 UF-1 + Ops）**：
 - 升级先运行 `life-index upgrade --plan --json`；`--apply` 只会只读诊断并返回 no-op 或 `UPGRADE_REINSTALL_REQUIRED`，后者须按 `AGENT_ONBOARDING.md` 新建 dedicated install，保持现有环境、checkout 与用户数据不动。
+- `life-index version` 返回安装包内嵌的 authority manifest；不要在已安装 Skill 目录中猜找 `bootstrap-manifest.json` 或仓库文档。Skill 叶目录缺少仓库文档时，使用安装命令的 `--help`，或让用户提供受信 checkout。
 - `sync-skill --install` 的目标槽位始终是 `<host-home>/skills/life-index/`；若传入 `<host-home>/skills` parent，会自动归一化到 canonical slot，并可清理已知 1.4.2 parent-slot 坏状态；它也会自动收敛本管理树的 `skills/life-index/life-index` 嵌套重复；若返回 `HOST_SKILL_DIR_AMBIGUOUS`，说明存在多个无关或不安全候选，需让用户指定 `--host-skill-dir`
-- 这是会话面提示，不替代 `bootstrap --json` 的安装/repair authority；旧版本无法自带新检测码时，以 `bootstrap-manifest.json` + `CHANGELOG.md` 为人工校验锚点；GUI 栈升级/运维见 GUI 仓 `docs/AGENT_UPDATE_PLAYBOOK.md`
+- `sync-skill` 是程序验收后的独立 host-integration 动作；`bootstrap` 的 data `safe_next_steps` 也不得并入程序升级。旧版本无法自带新检测码时，以受信 checkout 的 `bootstrap-manifest.json` + `CHANGELOG.md` 为人工校验锚点；GUI 栈升级/运维见 GUI 仓 `docs/AGENT_UPDATE_PLAYBOOK.md`
 
 <!-- GROUNDED_QUERY_SKILL_START -->
 ## Grounded Query Routing (SSOT)

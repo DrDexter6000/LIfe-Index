@@ -54,7 +54,13 @@ class FakeCommandRunner:
         self.version_package = "1.4.4"
         self.version_manifest = "1.4.4"
 
-    def run(self, command: list[str], *, cwd: Path | None = None) -> Any:
+    def run(
+        self,
+        command: list[str],
+        *,
+        cwd: Path | None = None,
+        env: dict[str, str] | None = None,
+    ) -> Any:
         self.commands.append(command)
         from tools.upgrade.core import CommandResult
 
@@ -114,6 +120,31 @@ class FakeCommandRunner:
                 stderr="",
             )
         return CommandResult(returncode=0, stdout="{}\n", stderr="")
+
+
+class CapturingUpgradeCommandRunner(FakeCommandRunner):
+    def __init__(self, health_payload: dict[str, Any] | None = None) -> None:
+        super().__init__()
+        self.health_payload = health_payload
+        self.invocations: list[dict[str, Any]] = []
+
+    def run(
+        self,
+        command: list[str],
+        *,
+        cwd: Path | None = None,
+        env: dict[str, str] | None = None,
+    ) -> Any:
+        self.invocations.append({"command": command, "cwd": cwd, "env": env})
+        if "health --json" in " ".join(command) and self.health_payload is not None:
+            from tools.upgrade.core import CommandResult
+
+            return CommandResult(
+                returncode=0,
+                stdout=json.dumps(self.health_payload),
+                stderr="",
+            )
+        return super().run(command, cwd=cwd)
 
 
 def test_subprocess_git_runner_status_disables_optional_locks(
@@ -883,6 +914,65 @@ def test_healthy_current_apply_is_truthful_noop_without_program_writes() -> None
     assert result["data"]["recommended_next_step"]["id"] == "none"
     assert not any("pip install" in " ".join(command) for command in runner.commands)
     assert not any("sync-skill --install" in " ".join(command) for command in runner.commands)
+
+
+def test_upgrade_health_probe_uses_neutral_synthetic_environment() -> None:
+    from tools.upgrade.core import InstallContext, ReleaseInfo, build_upgrade_plan
+
+    runner = CapturingUpgradeCommandRunner()
+    build_upgrade_plan(
+        context=InstallContext(
+            package_version="1.6.2",
+            manifest_version="1.6.2",
+            install_type="package",
+            repo_path=None,
+        ),
+        release_provider=FakeReleaseProvider([ReleaseInfo(version="1.6.2")]),
+        command_runner=runner,
+    )
+
+    health_call = next(
+        call for call in runner.invocations if "health --json" in " ".join(call["command"])
+    )
+    assert health_call["cwd"] is not None
+    assert health_call["env"] is not None
+    assert health_call["env"]["LIFE_INDEX_VALIDATION_MODE"] == "1"
+    assert Path(health_call["env"]["LIFE_INDEX_DATA_DIR"]).parent == health_call["cwd"]
+    assert "PYTHONPATH" not in health_call["env"]
+
+
+def test_upgrade_fails_closed_when_neutral_health_reports_version_mismatch() -> None:
+    from tools.upgrade.core import InstallContext, ReleaseInfo, build_upgrade_plan
+
+    runner = CapturingUpgradeCommandRunner(
+        {
+            "success": True,
+            "schema_version": "m16.health.v0",
+            "data": {
+                "status": "degraded",
+                "upgrade_freshness": {
+                    "status": "warning",
+                    "installed_version": "1.4.5",
+                    "manifest_version": "1.4.5",
+                    "freshness": "update_available",
+                    "update_available": "git-behind",
+                },
+            },
+        }
+    )
+    plan = build_upgrade_plan(
+        context=InstallContext(
+            package_version="1.6.2",
+            manifest_version="1.6.2",
+            install_type="package",
+            repo_path=None,
+        ),
+        release_provider=FakeReleaseProvider([ReleaseInfo(version="1.6.2")]),
+        command_runner=runner,
+    )
+
+    assert plan["data"]["recommended_next_step"]["id"] == "reinstall_managed_environment"
+    assert "health" in plan["data"]["recommended_next_step"]["reason"].lower()
 
 
 def test_missing_skill_requires_reinstall_without_sync_skill_install(tmp_path: Path) -> None:
