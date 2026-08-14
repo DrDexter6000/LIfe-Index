@@ -51,6 +51,15 @@
   "total_matches": 1,
   "total_available": 1,
   "has_more": false,
+  "retrieval_coverage": {
+    "schema_version": "retrieval_coverage.v1",
+    "status": "complete",
+    "observed_total": 1,
+    "returned": 1,
+    "next_offset": null,
+    "partial_reasons": [],
+    "limits_applied": []
+  },
   "no_confident_match": true,
   "semantic_available": false,
   "semantic_policy": "fallback",

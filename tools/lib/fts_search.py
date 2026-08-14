@@ -134,7 +134,12 @@ def search_fts(
 
             # 按 BM25 分数排序（分数越低表示越相关）
             sql += " ORDER BY rank ASC"
-            sql += f" LIMIT {limit}"
+            # limit <= 0 means "materialize the full admitted set" (Phase 1
+            # CHARTER §1.11): no SQL LIMIT cap, so retrieval is not silently
+            # truncated before pagination. A Python-level fail-closed bound
+            # (FTS_MAX_RETRIEVAL_BOUND) in the keyword pipeline guards memory.
+            if limit and limit > 0:
+                sql += f" LIMIT {limit}"
 
             cursor.execute(sql, params)
 
@@ -193,7 +198,8 @@ def search_fts(
                 params.append(date_to)
 
             sql += " ORDER BY rank ASC"
-            sql += f" LIMIT {limit}"
+            if limit and limit > 0:
+                sql += f" LIMIT {limit}"
 
             cursor.execute(sql, params)
 

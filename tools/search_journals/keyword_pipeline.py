@@ -17,8 +17,8 @@ from ..lib import chinese_tokenizer
 from ..lib.paths import get_user_data_dir, get_journals_dir
 from ..lib.path_contract import merge_journal_path_fields
 from ..lib.search_constants import (
-    FTS_LIMIT,
     FTS_FALLBACK_THRESHOLD,
+    FTS_MAX_RETRIEVAL_BOUND,
     FTS_MIN_RELEVANCE,
     KEYWORD_TOKEN_HIT_RATIO,
 )
@@ -309,6 +309,11 @@ def _count_distinct_token_hits(text: str, tokens: list[str]) -> int:
     return count
 
 
+def _l3_item_identity(item: dict[str, Any]) -> str:
+    """Stable identity of an L3 candidate for cross-stage dedup accounting."""
+    return str(item.get("journal_route_path") or item.get("path") or "")
+
+
 def _compute_min_required_hits(query_tokens: list[str]) -> tuple[int, list[str]]:
     """Compute required distinct token hits based on D8 rule.
 
@@ -449,16 +454,21 @@ def run_keyword_pipeline(
     )
     l2_results = l2_response["results"]
     l2_results = _filter_candidate_items(l2_results)
+    # The source-cap facts describe the UPSTREAM L2 source, not the post-filter
+    # window: overwriting total_available with the candidate-filtered count
+    # would erase a real retrieval cap from the coverage signal.
     l2_truncated = l2_response.get("truncated", False)
-    l2_total_available = (
-        len(l2_results) if candidate_paths is not None else l2_response.get("total_available", 0)
-    )
+    l2_total_available = l2_response.get("total_available", 0)
     perf["l2_time_ms"] = round((time.time() - l2_start) * 1000, 2)
     logger.info(f"[SearchPerf] L2 metadata: {len(l2_results)} results, {perf['l2_time_ms']}ms")
 
     # L3: FTS5 内容搜索
     l3_start = time.time()
     l3_results: list[dict] = []
+    # Phase 1 corrective: candidates dropped by the FTS min-hits post-filter,
+    # tracked so the coverage layer can report the ones no fallback recovered.
+    min_hits_excluded: list[dict[str, Any]] = []
+    min_hits_required = 0
 
     if has_effective_query and normalized_query:
         # Segment Chinese text in query before FTS matching (T1.3)
@@ -474,12 +484,18 @@ def run_keyword_pipeline(
             try:
                 from ..lib.search_index import search_fts
 
+                # Phase 1 (CHARTER §1.11): retrieve the FULL admitted candidate
+                # set (limit=0 → no SQL cap) with min_relevance=0 so the FTS
+                # layer does not drop low-relevance token-matches via a dynamic
+                # threshold. The explicit ``fts_min_relevance`` threshold is
+                # applied (and counted) AFTER retrieval, below, making this
+                # pipeline the single threshold authority.
                 fts_results = search_fts(
                     fts_query,
                     date_from,
                     date_to,
-                    limit=FTS_LIMIT,
-                    min_relevance=fts_min_relevance,
+                    limit=0,
+                    min_relevance=0,
                 )
 
                 if fallback_fts_query and len(fts_results) < 3:
@@ -487,8 +503,8 @@ def run_keyword_pipeline(
                         fallback_fts_query,
                         date_from,
                         date_to,
-                        limit=FTS_LIMIT,
-                        min_relevance=fts_min_relevance,
+                        limit=0,
+                        min_relevance=0,
                     )
                     fts_results = _merge_fts_results(fts_results, fallback_results)
 
@@ -542,6 +558,7 @@ def run_keyword_pipeline(
                                 if hits >= required_hits:
                                     filtered.append(item)
                                 else:
+                                    min_hits_excluded.append(item)
                                     logger.debug(
                                         "FTS min-hits filter: removed '%s' " "(hit %d/%d tokens)",
                                         item.get("title", ""),
@@ -550,6 +567,7 @@ def run_keyword_pipeline(
                                     )
                             l3_results = filtered
                             if before_count != len(l3_results):
+                                min_hits_required = required_hits
                                 logger.info(
                                     "FTS min-hits filter: %d → %d results " "(required ≥%d of %s)",
                                     before_count,
@@ -617,6 +635,66 @@ def run_keyword_pipeline(
                 sorted(candidate_paths) if candidate_paths is not None else None,
             )
             logger.debug(f"File scan found {len(l3_results)} results")
+
+        # Phase 1 corrective: account for min-hits exclusions AFTER every recovery
+        # path (stale-index supplement, full-corpus fallback) has run. Only the
+        # candidates still absent from the final set are a coverage gap; a
+        # fallback-recovered exclusion must not be double-reported. Filtering the
+        # accounting set through the same L0 prefilter keeps items the caller's
+        # candidate scope never admitted from being miscounted as min-hits gaps.
+        if min_hits_excluded:
+            recoverable = _filter_candidate_items(min_hits_excluded)
+            final_identities = {_l3_item_identity(item) for item in l3_results}
+            still_excluded = [
+                item for item in recoverable if _l3_item_identity(item) not in final_identities
+            ]
+            if still_excluded:
+                perf["fts_min_hits_excluded"] = float(len(still_excluded))
+                perf["fts_min_hits_required"] = float(min_hits_required)
+
+    # Phase 1: high-cardinality fail-closed backstop. With full materialization
+    # FTS_LIMIT no longer caps retrieval; a pathologically large observed set
+    # must fail CLOSED rather than return a truncated subset that could be
+    # mistaken for the complete set. Rather than a bare RuntimeError, this raises
+    # a structured LifeIndexError (E0301 + details.reason=retrieval_resource_bound)
+    # which the search entry point converts into the standard machine-readable
+    # error envelope. See ADR-014 / FTS_MAX_RETRIEVAL_BOUND.
+    if len(l3_results) > FTS_MAX_RETRIEVAL_BOUND:
+        from ..lib.errors import ErrorCode, LifeIndexError
+
+        raise LifeIndexError(
+            ErrorCode.SEARCH_FAILED,
+            "Retrieval refused: observed candidate set exceeded the safety bound.",
+            details={
+                "reason": "retrieval_resource_bound",
+                "observed": len(l3_results),
+                "bound": int(FTS_MAX_RETRIEVAL_BOUND),
+            },
+        )
+
+    # Phase 1: explicit threshold authority. Apply ``fts_min_relevance`` AFTER
+    # retrieval and COUNT the otherwise-matching candidates it drops, so the
+    # coverage layer can mark the retrieval partial only when an exclusion
+    # actually happened. A threshold of 0 (default token-match threshold) admits
+    # everything and records no exclusion.
+    if fts_min_relevance and fts_min_relevance > 0:
+        kept: list[dict[str, Any]] = []
+        excluded = 0
+        for item in l3_results:
+            if int(item.get("relevance", 0) or 0) >= fts_min_relevance:
+                kept.append(item)
+            else:
+                excluded += 1
+        if excluded:
+            l3_results = kept
+            perf["fts_threshold_excluded"] = float(excluded)
+            perf["fts_threshold"] = float(fts_min_relevance)
+            logger.debug(
+                "FTS explicit threshold %d excluded %d of %d L3 candidates",
+                fts_min_relevance,
+                excluded,
+                excluded + len(kept),
+            )
 
     perf["l3_time_ms"] = round((time.time() - l3_start) * 1000, 2)
     logger.info(f"[SearchPerf] L3 content: {len(l3_results)} results, {perf['l3_time_ms']}ms")
