@@ -104,7 +104,8 @@ Never invent evidence or treat `entity_expansion` as a filter or adjudicator;
 use it only to explain alias or relationship attribution.
 
 Retrieval threshold and completeness: `life-index search` runs with
-`min_relevance=0` by default. `min_relevance=0` is the intentional Phase 1 recall-first default: search passes an explicit zero token-match threshold and thereby bypasses the legacy high-frequency dynamic threshold; this is by design, not an omission.
+a fixed internal `min_relevance=0`. `min_relevance=0` is the intentional Phase 1 recall-first default: search passes an explicit zero token-match threshold and thereby bypasses the legacy high-frequency dynamic threshold; this is by design, not an omission.
+`min_relevance=0` is fixed inside `search` itself; it is not a host-callable CLI flag. The host agent must never attempt `--min-relevance`, and must not pass any relevance-threshold argument when re-running or paginating a query; the identical min_relevance of the mechanical recipe below is held by that internal default.
 Whether a search has seen the whole admitted set is governed by the returned
 `retrieval_coverage` object (`retrieval_coverage.v1`), not by the legacy
 `total_*` fields alone: `status: "complete"` is the only proof of completeness,
@@ -112,6 +113,28 @@ Whether a search has seen the whole admitted set is governed by the returned
 (page forward by exactly that value; level 1/2 windows paginate
 `l1_results`/`l2_results`), and any `partial_reasons` entry names the honest
 gap.
+
+`smart-search` `filtered_results` is a bounded discovery scaffold, not a completeness authority.
+When the answer depends on the full set, a count, or an enumeration,
+the completeness decision belongs to `search` and its `retrieval_coverage.v1` object.
+
+Mechanical full-set consumption for the host agent:
+
+1. When the full set is needed, prefer re-running the same deterministic query/filter/level/min_relevance as `search --limit 0`.
+2. If you paginate instead, change only `offset` to the returned `next_offset` on each call,
+   deduplicate the accumulated set by the stable journal `rel_path`, and
+   stop only when `next_offset` is null. A live cursor or any single page never proves completeness.
+3. Only `status: "complete"` proves that one response carries the whole admitted set. If the final state is still `partial`,
+   disclose `partial_reasons` and `limits_applied` to the user in natural language; never silently claim "all".
+4. A `complete` on a narrowed query/filter proves only that the narrowed admitted set is complete.
+   Unless the narrowing forms a provably exhaustive and non-overlapping partition of the original scope,
+   multiple narrow `complete` results must not be presented as the original wide question being complete;
+   disclose that the original question remains partial/unfinished.
+5. `success: false` with `E0301` and `reason=retrieval_resource_bound` is not a zero-result answer.
+   Narrow the date/topic/person/project/entity/facet scope, or switch to
+   `index-tree ensure` -> `discover` -> `navigate`, then retry. If the request still exceeds the bound,
+   report the returned `observed`/`bound` and the unfinished state honestly; do not guess a conclusion.
+6. Never substitute the legacy `total_found` / `total_matches` / `total_available` / `has_more` projections for the coverage authority.
 
 Consume `evidence_pack.diagnostics.retrieval_outcome` as follows:
 
