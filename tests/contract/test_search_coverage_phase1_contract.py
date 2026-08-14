@@ -1190,3 +1190,162 @@ def test_q_child_failed_is_not_an_emittable_partial_reason() -> None:
     assert "child_failed" not in api_text, (
         "the documented partial_reasons vocabulary must not advertise an " "unreachable reason"
     )
+
+
+# ── (r) host-agent coverage consumption semantics in root + packaged docs ─────
+
+
+_SKILL_GROUNDED_ANCHORS = (
+    "<!-- GROUNDED_QUERY_SKILL_START -->",
+    "<!-- GROUNDED_QUERY_SKILL_END -->",
+)
+_PLAYBOOK_CONSUMPTION_ANCHORS = (
+    "## Search And Smart-Search Consumption",
+    "## Aggregation And Heuristic Evidence",
+)
+
+_ROOT_AND_PACKAGED_DOCS = (
+    ("root SKILL.md", "SKILL.md"),
+    ("packaged SKILL.md", "tools/_skill_artifacts/SKILL.md"),
+    ("root playbook", "references/GROUNDED_QUERY_PLAYBOOK.md"),
+    (
+        "packaged playbook",
+        "tools/_skill_artifacts/references/GROUNDED_QUERY_PLAYBOOK.md",
+    ),
+)
+
+
+def _doc_block(label: str, rel_path: str) -> str:
+    """Read the coverage-consumption surface of one doc (root or packaged).
+
+    SKILL.md is scoped to its Grounded Query Routing SSOT block; the playbook is
+    scoped to its Search And Smart-Search Consumption section. The scoped block
+    is where the host-agent consumption rules must live.
+    """
+    text = (Path(__file__).resolve().parents[2] / rel_path).read_text(encoding="utf-8")
+    anchors = (
+        _SKILL_GROUNDED_ANCHORS if rel_path.endswith("SKILL.md") else _PLAYBOOK_CONSUMPTION_ANCHORS
+    )
+    start_marker, end_marker = anchors
+    start = text.find(start_marker)
+    assert start != -1, f"{label} must contain the anchor {start_marker!r}"
+    start += len(start_marker)
+    end = text.find(end_marker, start)
+    assert end != -1, f"{label} must contain the anchor {end_marker!r}"
+    return text[start:end]
+
+
+# Each rule pairs the SKILL.md SSOT markers with the playbook markers. Every
+# marker must appear verbatim in BOTH the root doc and the packaged mirror, so
+# the packaged Skill cannot drift from the development SSOT.
+_COVERAGE_CONSUMPTION_RULES: dict[str, dict[str, tuple[str, ...]]] = {
+    "r1_bounded_scaffold_not_completeness_authority": {
+        "SKILL.md": (
+            "`smart-search` 的 `filtered_results` 只是有界发现 scaffold，不是完整性权威",
+            "答案依赖“全部/计数/枚举”时，必须回到 `search` 的 `retrieval_coverage.v1`",
+        ),
+        "PLAYBOOK": (
+            "`filtered_results` is a bounded discovery scaffold, not a completeness authority",
+            "the completeness decision belongs to `search` and its `retrieval_coverage.v1` object",
+        ),
+    },
+    "r2_full_set_mechanics": {
+        "SKILL.md": (
+            "优先用同一确定性 query/filter/level/min_relevance 调 `search --limit 0`",
+            "每次只把 `offset` 改为当前返回的 `next_offset`，按稳定 journal `rel_path` 去重累计，"
+            "直到 `next_offset` 为 null 才停止",
+            "cursor 的存在或任何单独一页都不等于完整",
+        ),
+        "PLAYBOOK": (
+            "same deterministic query/filter/level/min_relevance as `search --limit 0`",
+            "change only `offset` to the returned `next_offset` on each call",
+            "deduplicate the accumulated set by the stable journal `rel_path`",
+            "stop only when `next_offset` is null",
+            "A live cursor or any single page never proves completeness",
+        ),
+    },
+    "r3_only_complete_proves_and_partial_disclosed": {
+        "SKILL.md": (
+            "只有 `status=complete` 才能声称该次响应携带完整 admitted set",
+            "必须用自然语言向用户披露 `partial_reasons` 与 `limits_applied`，不得静默称“全部”",
+        ),
+        "PLAYBOOK": (
+            'Only `status: "complete"` proves that one response carries the whole admitted set',
+            "disclose `partial_reasons` and `limits_applied` to the user in natural language",
+            'never silently claim "all"',
+        ),
+    },
+    "r4_resource_bound_is_not_zero_results": {
+        "SKILL.md": (
+            "`success:false` + `E0301` + `reason=retrieval_resource_bound` 不是零结果",
+            "先收窄 date/topic/person/project/entity/facet，或走 `index-tree ensure` → `discover` → `navigate`，再重试",
+            "仍超界则如实报告 `observed`/`bound` 与未完成状态，不猜结论",
+        ),
+        "PLAYBOOK": (
+            "`reason=retrieval_resource_bound` is not a zero-result answer",
+            "Narrow the date/topic/person/project/entity/facet scope",
+            "`index-tree ensure` -> `discover` -> `navigate`",
+            "report the returned `observed`/`bound` and the unfinished state honestly",
+        ),
+    },
+    "r5_legacy_totals_are_not_the_authority": {
+        "SKILL.md": (
+            "不得用 legacy `total_found` / `total_matches` / `total_available` / `has_more` "
+            "取代 coverage authority",
+        ),
+        "PLAYBOOK": (
+            "Never substitute the legacy `total_found` / `total_matches` / `total_available` / "
+            "`has_more` projections for the coverage authority",
+        ),
+    },
+}
+
+
+@pytest.mark.parametrize("rule", list(_COVERAGE_CONSUMPTION_RULES))
+def test_r_coverage_consumption_rule_is_published_root_and_packaged(rule: str) -> None:
+    """(r) Each consumption rule must appear verbatim in root AND packaged docs.
+
+    The retrieval_coverage.v1 consumption semantics are host-agent law: the
+    Skill SSOT block and the grounded query playbook must teach them, and the
+    packaged mirror under tools/_skill_artifacts must carry the same text so an
+    installed Skill cannot drift from the development SSOT.
+    """
+    markers_by_doc = _COVERAGE_CONSUMPTION_RULES[rule]
+    for label, rel_path in _ROOT_AND_PACKAGED_DOCS:
+        block = _doc_block(label, rel_path)
+        expected = markers_by_doc["SKILL.md" if rel_path.endswith("SKILL.md") else "PLAYBOOK"]
+        for marker in expected:
+            assert marker in block, (
+                f"{label} must publish the {rule} consumption rule verbatim; "
+                f"missing marker: {marker!r}"
+            )
+
+
+def test_r_consumption_rules_are_runtime_generic_and_cap_free() -> None:
+    """(r) The consumption rules must stay runtime-generic and fixed-cap free.
+
+    The rules live in the host-agent surface, so they must not branch on a
+    specific agent runtime name (any compliant runtime executes them), and they
+    must not bake in a fixed "at most N entries" ceiling: completeness is
+    decided by retrieval_coverage.v1 mechanics, never by a hardcoded page cap.
+    """
+    import re
+
+    forbidden_runtime_names = ("Codex", "Hermes", "Claude")
+    forbidden_cap_patterns = (
+        re.compile(r"--limit [1-9]"),
+        re.compile(r"最多\s*[1-9]"),
+        re.compile(r"(?:at most|up to)\s+[1-9][0-9]*\s+(?:results|entries|journals)"),
+    )
+    for label, rel_path in _ROOT_AND_PACKAGED_DOCS:
+        block = _doc_block(label, rel_path)
+        for name in forbidden_runtime_names:
+            assert (
+                name not in block
+            ), f"{label} consumption rules must not branch on the runtime name {name!r}"
+        for pattern in forbidden_cap_patterns:
+            match = pattern.search(block)
+            assert match is None, (
+                f"{label} consumption rules must not fix a result cap; "
+                f"forbidden cap pattern {pattern.pattern!r} matched {match.group(0)!r}"
+            )

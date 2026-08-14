@@ -113,6 +113,24 @@ Whether a search has seen the whole admitted set is governed by the returned
 `l1_results`/`l2_results`), and any `partial_reasons` entry names the honest
 gap.
 
+`smart-search` `filtered_results` is a bounded discovery scaffold, not a completeness authority.
+When the answer depends on the full set, a count, or an enumeration,
+the completeness decision belongs to `search` and its `retrieval_coverage.v1` object.
+
+Mechanical full-set consumption for the host agent:
+
+1. When the full set is needed, prefer re-running the same deterministic query/filter/level/min_relevance as `search --limit 0`.
+2. If you paginate instead, change only `offset` to the returned `next_offset` on each call,
+   deduplicate the accumulated set by the stable journal `rel_path`, and
+   stop only when `next_offset` is null. A live cursor or any single page never proves completeness.
+3. Only `status: "complete"` proves that one response carries the whole admitted set. If the final state is still `partial`,
+   disclose `partial_reasons` and `limits_applied` to the user in natural language; never silently claim "all".
+4. `success: false` with `E0301` and `reason=retrieval_resource_bound` is not a zero-result answer.
+   Narrow the date/topic/person/project/entity/facet scope, or switch to
+   `index-tree ensure` -> `discover` -> `navigate`, then retry. If the request still exceeds the bound,
+   report the returned `observed`/`bound` and the unfinished state honestly; do not guess a conclusion.
+5. Never substitute the legacy `total_found` / `total_matches` / `total_available` / `has_more` projections for the coverage authority.
+
 Consume `evidence_pack.diagnostics.retrieval_outcome` as follows:
 
 | Outcome | Host-agent action |

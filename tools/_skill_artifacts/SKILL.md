@@ -154,6 +154,13 @@ Do not use `recall`, broad grep, or full-directory reads for new playbooks.
 
 **检索阈值与完整性（Phase 1 recall-first）**：`life-index search` 默认使用 `min_relevance=0`。`min_relevance=0` is the intentional Phase 1 recall-first default: search passes an explicit zero token-match threshold and thereby bypasses the legacy high-frequency dynamic threshold; this is by design, not an omission. 低相关 token 命中不会被动态阈值静默丢弃；是否“已看全”以返回值中的 `retrieval_coverage`（`retrieval_coverage.v1`）为权威 —— level 1/2 分页作用于 `l1_results`/`l2_results`，`next_offset` 只表示可继续翻页、不等于完整，翻页请按 `next_offset` 前进。
 
+**retrieval_coverage.v1 消费规则（机械执行）**：
+- `smart-search` 的 `filtered_results` 只是有界发现 scaffold，不是完整性权威；答案依赖“全部/计数/枚举”时，必须回到 `search` 的 `retrieval_coverage.v1` 做完整性判定。
+- 需要全集时，优先用同一确定性 query/filter/level/min_relevance 调 `search --limit 0`；若走分页，每次只把 `offset` 改为当前返回的 `next_offset`，按稳定 journal `rel_path` 去重累计，直到 `next_offset` 为 null 才停止。cursor 的存在或任何单独一页都不等于完整。
+- 只有 `status=complete` 才能声称该次响应携带完整 admitted set；最终仍为 `partial` 时，必须用自然语言向用户披露 `partial_reasons` 与 `limits_applied`，不得静默称“全部”。
+- `success:false` + `E0301` + `reason=retrieval_resource_bound` 不是零结果：先收窄 date/topic/person/project/entity/facet，或走 `index-tree ensure` → `discover` → `navigate`，再重试；仍超界则如实报告 `observed`/`bound` 与未完成状态，不猜结论。
+- 不得用 legacy `total_found` / `total_matches` / `total_available` / `has_more` 取代 coverage authority；它们只是 `retrieval_coverage.v1` 的投影。
+
 <!-- GROUNDED_QUERY_SKILL_END -->
 
 ## Project Structure
