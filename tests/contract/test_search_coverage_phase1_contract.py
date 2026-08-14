@@ -1298,6 +1298,33 @@ _COVERAGE_CONSUMPTION_RULES: dict[str, dict[str, tuple[str, ...]]] = {
             "`has_more` projections for the coverage authority",
         ),
     },
+    "r6_min_relevance_is_internal_fixed_not_a_host_flag": {
+        "SKILL.md": (
+            "`min_relevance=0` 是 `search` 内部固定的 recall-first 默认值，不是 Host 可传的 CLI flag",
+            "Host 不得尝试 `--min-relevance`",
+        ),
+        "PLAYBOOK": (
+            "`min_relevance=0` is fixed inside `search` itself; it is not a host-callable CLI flag",
+            "must never attempt `--min-relevance`",
+        ),
+    },
+    "r7_narrow_complete_proves_only_the_narrowed_set": {
+        "SKILL.md": (
+            "收窄 query/filter 后的 `complete` 只证明该次收窄的 admitted set 完整",
+            "除非收窄方式构成对原始范围可证明穷尽且互不重叠的划分",
+            "不得把多个窄 `complete` 合并宣称为原始宽问题的 complete",
+            "必须向用户披露原问题仍为 partial/unfinished",
+        ),
+        "PLAYBOOK": (
+            "A `complete` on a narrowed query/filter proves only that the narrowed "
+            "admitted set is complete",
+            "Unless the narrowing forms a provably exhaustive and non-overlapping "
+            "partition of the original scope",
+            "multiple narrow `complete` results must not be presented as the original "
+            "wide question being complete",
+            "disclose that the original question remains partial/unfinished",
+        ),
+    },
 }
 
 
@@ -1349,3 +1376,38 @@ def test_r_consumption_rules_are_runtime_generic_and_cap_free() -> None:
                 f"{label} consumption rules must not fix a result cap; "
                 f"forbidden cap pattern {pattern.pattern!r} matched {match.group(0)!r}"
             )
+
+
+def test_r_consumption_rules_never_teach_executable_min_relevance_flag() -> None:
+    """(r) Host consumption rules must never teach an executable ``--min-relevance``.
+
+    ``min_relevance=0`` is fixed inside search; it is not a host-callable CLI
+    flag. The scoped blocks may (and per r6 must) state that internal-default
+    fact, but they must never carry an executable flag instruction: the dash
+    form must not appear with a value, and every bare ``--min-relevance``
+    mention must sit in a prohibition sentence. The lock targets only the
+    dash-flag form, so it never forbids stating the internal default
+    (``min_relevance=0``) itself.
+    """
+    import re
+
+    value_form = re.compile(r"--min-relevance(?:=|\s)\S*")
+    prohibition_tokens = ("不得", "不要", "禁止", "不存在", "never", "must not", "not a", "no such")
+    for label, rel_path in _ROOT_AND_PACKAGED_DOCS:
+        block = _doc_block(label, rel_path)
+        assert "min_relevance=0" in block, (
+            f"{label} must keep stating the internal min_relevance=0 default; the "
+            "flag prohibition below must not ban that fact"
+        )
+        match = value_form.search(block)
+        assert match is None, (
+            f"{label} consumption rules must not teach an executable --min-relevance "
+            f"flag; forbidden value form matched {match.group(0)!r}"
+        )
+        for line in block.splitlines():
+            if "--min-relevance" in line:
+                assert any(token in line for token in prohibition_tokens), (
+                    f"{label} may mention --min-relevance only inside a prohibition "
+                    f"sentence, never as an executable instruction; offending line: "
+                    f"{line.strip()!r}"
+                )
