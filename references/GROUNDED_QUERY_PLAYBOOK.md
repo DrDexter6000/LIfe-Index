@@ -118,12 +118,25 @@ gap.
 When the answer depends on the full set, a count, or an enumeration,
 the completeness decision belongs to `search` and its `retrieval_coverage.v1` object.
 
+`smart-search` responses also carry their own top-level `retrieval_coverage.v1`
+(additive public contract as of Phase 2A): it is the single completeness
+authority for that response window, and `filtered_results` is a bounded window
+of at most 15 candidates — never treat it as the user's whole journal record
+set.
+
 Mechanical full-set consumption for the host agent:
 
 1. When the full set is needed, prefer re-running the same deterministic query/filter/level/min_relevance as `search --limit 0`.
 2. If you paginate instead, change only `offset` to the returned `next_offset` on each call,
    deduplicate the accumulated set by the stable journal `rel_path`, and
    stop only when `next_offset` is null. A live cursor or any single page never proves completeness.
+   For `smart-search`, continue with the same query plus the public `--offset`
+   parameter set to the returned `next_offset` (identical deterministic
+   query/filter/date semantics), and disclose `partial_reasons` entries such as
+   `child_failed` honestly instead of treating safe partial results as the full
+   record set. `has_more` only means a mechanical next page exists; it never
+   encodes partial status — completeness is decided solely by
+   `retrieval_coverage.status` / `partial_reasons`.
 3. Only `status: "complete"` proves that one response carries the whole admitted set. If the final state is still `partial`,
    disclose `partial_reasons` and `limits_applied` to the user in natural language; never silently claim "all".
 4. A `complete` on a narrowed query/filter proves only that the narrowed admitted set is complete.

@@ -24,6 +24,17 @@ SYNTHESIZE_DEPRECATION_WARNING = (
 )
 
 
+def _non_negative_int(value: str) -> int:
+    """Argparse type for the public continuation offset."""
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"expected a non-negative integer, got {value!r}") from exc
+    if parsed < 0:
+        raise argparse.ArgumentTypeError(f"offset must be >= 0, got {parsed}")
+    return parsed
+
+
 def _emit_json(payload: dict[str, Any]) -> None:
     """Print JSON safely across Windows console encodings."""
     text = json.dumps(payload, ensure_ascii=False, indent=2, default=str)
@@ -72,6 +83,16 @@ def main() -> None:
             "--include-evidence is set (explicit opt-in)"
         ),
     )
+    parser.add_argument(
+        "--offset",
+        type=_non_negative_int,
+        default=0,
+        help=(
+            "Continuation offset: pass the previous response's "
+            "retrieval_coverage.next_offset to fetch the next result window "
+            "(default: 0)"
+        ),
+    )
     args = parser.parse_args()
 
     if args.synthesize:
@@ -80,11 +101,16 @@ def main() -> None:
     from tools.search_journals.orchestrator import SmartSearchOrchestrator
 
     orch = SmartSearchOrchestrator()
-    result = orch.search(
-        args.query,
-        include_evidence=args.include_evidence,
-        synthesize=args.synthesize,
-    )
+    # The continuation cursor is forwarded only when a continuation is actually
+    # requested, so callers/mocks of the documented default entry shape stay
+    # byte-compatible with the pre-Phase-2A call.
+    search_kwargs: dict[str, Any] = {
+        "include_evidence": args.include_evidence,
+        "synthesize": args.synthesize,
+    }
+    if args.offset:
+        search_kwargs["offset"] = args.offset
+    result = orch.search(args.query, **search_kwargs)
 
     # Opt-in deterministic evidence formatter (additive only)
     if args.include_evidence and getattr(args, "format_entity_annotated", False):
@@ -151,6 +177,7 @@ def main() -> None:
             "query": args.query,
             "include_evidence": args.include_evidence,
             "synthesize": args.synthesize,
+            "offset": args.offset,
         },
         result={
             "total_found": result.get("total_found"),

@@ -309,6 +309,10 @@ class TestHelpContract:
     def test_help_includes_explain(self, help_proc: subprocess.CompletedProcess[str]) -> None:
         assert "--explain" in help_proc.stdout
 
+    def test_help_includes_offset(self, help_proc: subprocess.CompletedProcess[str]) -> None:
+        """--offset is documented as the public continuation parameter."""
+        assert "--offset" in help_proc.stdout
+
 
 class TestSeededEntityMatchContract:
     """Seeded CLI subprocess contract: entity_matches appear in evidence items."""
@@ -649,6 +653,124 @@ class TestFormatEntityAnnotatedContract:
             "performance",
         ):
             assert field in result, f"Missing stable field: {field}"
+
+
+class TestPhase2AContinuationContract:
+    """Phase 2A E2E: honest coverage + executable --offset continuation.
+
+    Seeds 18 body-only token matches (above the 15-candidate delivery window),
+    then walks two real CLI subprocess pages: page one must honestly report
+    ``status=partial`` with an integer ``next_offset``, and page two — fetched
+    through the public ``--offset`` parameter — must neither repeat nor omit
+    any of the 18 observed journals.
+    """
+
+    TOKEN = "phase2acontinuation"
+
+    @pytest.fixture(scope="class")
+    def continuation_sandbox(self) -> Iterator[Path]:
+        data_dir = Path(tempfile.mkdtemp(prefix="life-index-p2a-")) / "Life-Index"
+        journals = data_dir / "Journals" / "2026" / "04"
+        journals.mkdir(parents=True, exist_ok=True)
+        (data_dir / ".index").mkdir(parents=True, exist_ok=True)
+        (data_dir / ".cache").mkdir(parents=True, exist_ok=True)
+
+        for day in range(1, 19):
+            date_str = f"2026-04-{day:02d}"
+            (journals / f"life-index_{date_str}_001.md").write_text(
+                "---\n"
+                f"date: {date_str}\n"
+                "topic: []\n"
+                "tags: []\n"
+                "people: []\n"
+                "---\n\n"
+                "# neutral note\n\n"
+                f"Neutral fixture contains {self.TOKEN} in body only.\n",
+                encoding="utf-8",
+            )
+
+        env = {**os.environ, "LIFE_INDEX_DATA_DIR": str(data_dir)}
+        build_proc = subprocess.run(
+            [sys.executable, "-m", "tools.build_index"],
+            capture_output=True,
+            text=True,
+            cwd=str(REPO_ROOT),
+            env=env,
+            timeout=120,
+        )
+        assert (
+            build_proc.returncode == 0
+        ), f"build_index failed: stderr={build_proc.stderr}, stdout={build_proc.stdout}"
+        yield data_dir
+        shutil.rmtree(data_dir.parent, ignore_errors=True)
+
+    @pytest.fixture(scope="class")
+    def continuation_pages(
+        self, continuation_sandbox: Path
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        page_one_proc = _run_smart_search(
+            "--query",
+            self.TOKEN,
+            data_dir=continuation_sandbox,
+            timeout=120,
+        )
+        assert page_one_proc.returncode == 0, f"stderr: {page_one_proc.stderr}"
+        page_one = _json(page_one_proc)
+
+        coverage = page_one.get("retrieval_coverage")
+        assert coverage is not None, "smart-search CLI output lacks retrieval_coverage"
+        next_offset = coverage.get("next_offset")
+        assert isinstance(next_offset, int) and not isinstance(next_offset, bool)
+
+        page_two_proc = _run_smart_search(
+            "--query",
+            self.TOKEN,
+            "--offset",
+            str(next_offset),
+            data_dir=continuation_sandbox,
+            timeout=120,
+        )
+        assert page_two_proc.returncode == 0, f"stderr: {page_two_proc.stderr}"
+        return page_one, _json(page_two_proc)
+
+    @staticmethod
+    def _identities(page: dict[str, Any]) -> set[str]:
+        return {
+            item.get("rel_path") or item.get("path") or item.get("title") or ""
+            for item in page["filtered_results"]
+        }
+
+    def test_page_one_is_windowed_not_silent_truncation(
+        self, continuation_pages: tuple[dict[str, Any], dict[str, Any]]
+    ) -> None:
+        page_one, _ = continuation_pages
+        assert len(page_one["filtered_results"]) == 15
+        coverage = page_one["retrieval_coverage"]
+        assert coverage["schema_version"] == "retrieval_coverage.v1"
+        assert coverage["status"] == "partial"
+        assert coverage["observed_total"] == 18
+        assert coverage["returned"] == 15
+        assert coverage["next_offset"] == 15
+        assert "unread_page" in coverage["partial_reasons"]
+
+    def test_page_two_is_disjoint_and_lossless(
+        self, continuation_pages: tuple[dict[str, Any], dict[str, Any]]
+    ) -> None:
+        page_one, page_two = continuation_pages
+        page_one_ids = self._identities(page_one)
+        page_two_ids = self._identities(page_two)
+        assert len(page_two_ids) == 3
+        assert not (page_one_ids & page_two_ids)
+        assert len(page_one_ids | page_two_ids) == 18
+
+    def test_final_page_has_no_cursor_and_stays_partial(
+        self, continuation_pages: tuple[dict[str, Any], dict[str, Any]]
+    ) -> None:
+        _, page_two = continuation_pages
+        coverage = page_two["retrieval_coverage"]
+        assert coverage["next_offset"] is None
+        assert coverage["status"] == "partial"
+        assert coverage["observed_total"] == 18
 
 
 class TestCaseInsensitiveSeededEntityMatchContract:

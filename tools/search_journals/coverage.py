@@ -32,6 +32,9 @@ REASON_UNREAD_PAGE = "unread_page"  # more pages mechanically follow
 REASON_THRESHOLD_EXCLUDED = "threshold_excluded"  # explicit relevance threshold dropped >=1
 REASON_SOURCE_CAP = "source_cap"  # a retrieval cap truncated the observed set
 REASON_INDEX_NOT_FRESH = "index_not_fresh"  # un-refreshed stale / failed update
+# A retrieval child failed, or answered without a valid ``retrieval_coverage.v1``
+# authority so completeness cannot be proven (Revision 4 closed vocabulary).
+REASON_CHILD_FAILED = "child_failed"
 
 
 def build_retrieval_coverage(
