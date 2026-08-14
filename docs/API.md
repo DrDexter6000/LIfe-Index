@@ -2668,6 +2668,7 @@ child 与正确链接 manifest **同时**为 non-retryable `rollback_failed` 且
 | `total_matches` | int | yes | Total results matched (complete candidate set before truncation); always present, includes zero. `total_matches >= total_found` always holds. |
 | `total_available` | int | yes | Total results available (may exceed page); alias for `total_matches` (backward compatibility) |
 | `has_more` | bool | yes | Whether more results exist beyond current page |
+| `retrieval_coverage` | object | yes | `retrieval_coverage.v1` authority for retrieval completeness (Phase 1); see `retrieval_coverage` Authority below |
 | `display_summary` | string | yes | Human-readable "Showing X of Y results" summary |
 | `semantic_available` | bool | yes | Legacy compatibility field; current value is `false` because in-tool semantic/vector search is disabled |
 | `performance` | object | yes | Timing breakdown (`total_time_ms`, etc.) |
@@ -2686,6 +2687,7 @@ child 与正确链接 manifest **同时**为 non-retryable `rollback_failed` 且
 - `success`: retrieval execution success, not "Agent has answered the user". Empty results (`E0303`) are still `success: true`.
 - `merged_results`: primary result list consumers should use; items have `path`, `rel_path`, `title`, `date`, `rrf_score`. Results are capped by `--limit` (default 20) at the presentation layer. The retrieval core always returns the complete ranked candidate set; use `--limit 0` to bypass truncation.
 - `total_matches`: complete candidate set size before presentation-layer truncation. Invariant: `total_matches >= total_found` always holds. Per CHARTER §1.11, the retrieval/ranking layer must not silently hard-cap results.
+- `retrieval_coverage` (`retrieval_coverage.v1`): single authority for retrieval completeness as of Phase 1. `total_found` / `total_matches` / `total_available` / `has_more` are **projections** of it (`total_matches`/`total_available` = `observed_total`; `total_found` = `returned`; `has_more` = `next_offset is not None`). Full shape, complete/partial rules, the `partial_reasons` / `limits_applied` vocabulary, and the high-cardinality fail-closed behavior are documented in **`retrieval_coverage` Authority** below.
 - `display_summary`: human-readable count such as "Showing 5 of 56 results" or "Showing all 20 results" (when `--limit 0` or no truncation applied).
 - `query_params`: exact echo of all CLI inputs, including defaults filled in.
 - `entity_expansion`: caller-facing attribution for Entity Graph query expansion. `applied` is true when at least one expansion was applied; `expansions[]` entries contain `from`, `to`, `via`, `entity_id`, and `primary_name`. S1 emits `via: "alias"`; relation attribution uses the same shape when relation-aware expansion is enabled. This field is a hint, not a gate, and is block-level attribution rather than per-result attribution.
@@ -2810,6 +2812,30 @@ python -m tools.search_journals [options]
   "performance": {"total_time_ms": 45}
 }
 ```
+
+### `retrieval_coverage` Authority (`retrieval_coverage.v1`)
+
+`retrieval_coverage` is the single authority for retrieval completeness as of Phase 1; the legacy `total_found` / `total_matches` / `total_available` / `has_more` fields are projections derived from it so they cannot drift (`total_matches`/`total_available` = `observed_total`; `total_found` = `returned`; `has_more` = `next_offset is not None`).
+
+Shape:
+
+```json
+{
+  "schema_version": "retrieval_coverage.v1",
+  "status": "complete | partial",
+  "observed_total": "<int, post-threshold admitted-set size>",
+  "returned": "<int, items in THIS response window>",
+  "next_offset": "<int | null>",
+  "partial_reasons": ["unread_page", "threshold_excluded", "source_cap", "index_not_fresh", "child_failed"],
+  "limits_applied": ["fts_threshold:<n>", "result_limit:<n>", "l2_source_cap:<n>"]
+}
+```
+
+- `status` is `"complete"` **iff** this single response carries the whole admitted set with no remainder: `returned == observed_total`, `next_offset` is null, and both `partial_reasons` and `limits_applied` are empty. A `partial` status **always** carries ≥1 entry in `partial_reasons` (there is no "partial without a reason"); each reason explains one honest defect.
+- `unread_page` is recorded whenever this response window does NOT carry the whole admitted set (`returned < observed_total`) — including a nonzero-offset final page where `next_offset` is already null. `next_offset` / `has_more` signal **only** whether the same deterministic query can mechanically continue to a next page; they do not imply completeness. (The tool holds no snapshot/cursor between pages; if the corpus changes between requests, each page recomputes against the current `observed_total` and stays honest — it never fabricates `complete`.)
+- `result_limit:<n>` is recorded in `limits_applied` only when a presentation `limit` actually excluded candidates from this window; a `limit` that excluded nothing records nothing. `l2_source_cap:<n>` (from the existing `l2_total_available` field) is recorded only when the L2 metadata source was actually capped (`l2_truncated=true`).
+- Default token-match relevance threshold is `0`: neither the FTS layer nor the merge/ranking layer drops low-relevance token-matches via a dynamic threshold. An explicit nonzero threshold marks `partial` with `threshold_excluded` + `fts_threshold:<n>` **only when it actually excludes ≥1 candidate**; a configured threshold that excludes 0 does not mark partial.
+- **High-cardinality protection**: if the admitted candidate set exceeds the safety bound (`FTS_MAX_RETRIEVAL_BOUND`), the search **fails closed** rather than returning a truncated subset that could be mistaken for complete. It surfaces a machine-readable resource failure via the standard error envelope: `success:false`, `error.code=E0301`, `error.details.reason="retrieval_resource_bound"` (with `observed` and `bound`), no `merged_results`, and no `retrieval_coverage`. The CLI exits nonzero. Ordinary sets (at/below the bound) remain fully complete.
 
 ### Round 7 新增返回字段
 

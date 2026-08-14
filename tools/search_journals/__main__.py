@@ -46,6 +46,12 @@ def _apply_presentation_layer(result: dict, *, limit: int | None, offset: int = 
     if "merged_results" not in result:
         return
 
+    # Fail-closed result: respect the closed error envelope. Do not slice, do not
+    # synthesize a false-complete coverage object, and do not override the closed
+    # legacy totals already set by the retrieval layer.
+    if result.get("success") is False:
+        return
+
     total_matches = result.get("total_matches", len(result["merged_results"]))
     all_results = result["merged_results"]
 
@@ -57,9 +63,23 @@ def _apply_presentation_layer(result: dict, *, limit: int | None, offset: int = 
 
     displayed = len(all_results)
     result["merged_results"] = all_results
-    result["total_found"] = displayed
-    result["has_more"] = (offset + displayed) < total_matches
-    result["total_available"] = total_matches
+
+    # Phase 1 (#3/#4): re-scope retrieval_coverage.v1 to THIS response window and
+    # PROJECT the legacy total_*/has_more fields from it (single authority). The
+    # retrieval layer built the object against the full admitted set
+    # (returned=total_matches, offset=0); pagination narrows it to the slice
+    # actually carried by this response. ``observed_total`` stays the full
+    # admitted-set size, so a page (final or not) with returned < observed_total
+    # is honestly ``partial`` and lists ``unread_page``. A binding presentation
+    # limit is recorded as ``result_limit:<n>`` only when it actually excluded
+    # candidates. ``has_more`` / ``next_offset`` signal only whether the same
+    # deterministic query can mechanically continue.
+    from .coverage import build_coverage_for_result, project_legacy_from_coverage
+
+    result["retrieval_coverage"] = build_coverage_for_result(
+        result, returned=displayed, offset=offset, presentation_limit=limit
+    )
+    result.update(project_legacy_from_coverage(result["retrieval_coverage"]))
 
     if total_matches > 0:
         result["display_summary"] = f"Showing {displayed} of {total_matches} results"

@@ -17,8 +17,8 @@ from ..lib import chinese_tokenizer
 from ..lib.paths import get_user_data_dir, get_journals_dir
 from ..lib.path_contract import merge_journal_path_fields
 from ..lib.search_constants import (
-    FTS_LIMIT,
     FTS_FALLBACK_THRESHOLD,
+    FTS_MAX_RETRIEVAL_BOUND,
     FTS_MIN_RELEVANCE,
     KEYWORD_TOKEN_HIT_RATIO,
 )
@@ -474,12 +474,18 @@ def run_keyword_pipeline(
             try:
                 from ..lib.search_index import search_fts
 
+                # Phase 1 (CHARTER §1.11): retrieve the FULL admitted candidate
+                # set (limit=0 → no SQL cap) with min_relevance=0 so the FTS
+                # layer does not drop low-relevance token-matches via a dynamic
+                # threshold. The explicit ``fts_min_relevance`` threshold is
+                # applied (and counted) AFTER retrieval, below, making this
+                # pipeline the single threshold authority.
                 fts_results = search_fts(
                     fts_query,
                     date_from,
                     date_to,
-                    limit=FTS_LIMIT,
-                    min_relevance=fts_min_relevance,
+                    limit=0,
+                    min_relevance=0,
                 )
 
                 if fallback_fts_query and len(fts_results) < 3:
@@ -487,8 +493,8 @@ def run_keyword_pipeline(
                         fallback_fts_query,
                         date_from,
                         date_to,
-                        limit=FTS_LIMIT,
-                        min_relevance=fts_min_relevance,
+                        limit=0,
+                        min_relevance=0,
                     )
                     fts_results = _merge_fts_results(fts_results, fallback_results)
 
@@ -617,6 +623,50 @@ def run_keyword_pipeline(
                 sorted(candidate_paths) if candidate_paths is not None else None,
             )
             logger.debug(f"File scan found {len(l3_results)} results")
+
+    # Phase 1: high-cardinality fail-closed backstop. With full materialization
+    # FTS_LIMIT no longer caps retrieval; a pathologically large observed set
+    # must fail CLOSED rather than return a truncated subset that could be
+    # mistaken for the complete set. Rather than a bare RuntimeError, this raises
+    # a structured LifeIndexError (E0301 + details.reason=retrieval_resource_bound)
+    # which the search entry point converts into the standard machine-readable
+    # error envelope. See ADR-014 / FTS_MAX_RETRIEVAL_BOUND.
+    if len(l3_results) > FTS_MAX_RETRIEVAL_BOUND:
+        from ..lib.errors import ErrorCode, LifeIndexError
+
+        raise LifeIndexError(
+            ErrorCode.SEARCH_FAILED,
+            "Retrieval refused: observed candidate set exceeded the safety bound.",
+            details={
+                "reason": "retrieval_resource_bound",
+                "observed": len(l3_results),
+                "bound": int(FTS_MAX_RETRIEVAL_BOUND),
+            },
+        )
+
+    # Phase 1: explicit threshold authority. Apply ``fts_min_relevance`` AFTER
+    # retrieval and COUNT the otherwise-matching candidates it drops, so the
+    # coverage layer can mark the retrieval partial only when an exclusion
+    # actually happened. A threshold of 0 (default token-match threshold) admits
+    # everything and records no exclusion.
+    if fts_min_relevance and fts_min_relevance > 0:
+        kept: list[dict[str, Any]] = []
+        excluded = 0
+        for item in l3_results:
+            if int(item.get("relevance", 0) or 0) >= fts_min_relevance:
+                kept.append(item)
+            else:
+                excluded += 1
+        if excluded:
+            l3_results = kept
+            perf["fts_threshold_excluded"] = float(excluded)
+            perf["fts_threshold"] = float(fts_min_relevance)
+            logger.debug(
+                "FTS explicit threshold %d excluded %d of %d L3 candidates",
+                fts_min_relevance,
+                excluded,
+                excluded + len(kept),
+            )
 
     perf["l3_time_ms"] = round((time.time() - l3_start) * 1000, 2)
     logger.info(f"[SearchPerf] L3 content: {len(l3_results)} results, {perf['l3_time_ms']}ms")

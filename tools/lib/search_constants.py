@@ -137,6 +137,15 @@ FTS_LIMIT: int = 100
 # ADR-007: FTS fallback threshold (supplement with full scan if below)
 FTS_FALLBACK_THRESHOLD: int = 5
 
+# ADR-014: Retrieval materialization safety bound.
+# Phase 1 materializes the full admitted candidate set before paginating
+# (CHARTER §1.11), so FTS_LIMIT no longer silently caps retrieval. A
+# pathologically large corpus could exhaust memory; this bound is a fail-closed
+# backstop only — when exceeded the retrieval raises rather than returning a
+# truncated subset that could be mistaken for the complete set. It is far above
+# any realistic journal corpus and never reached by the synthetic fixtures.
+FTS_MAX_RETRIEVAL_BOUND: int = 100_000
+
 # ADR-010: Snippet token count for FTS highlights
 FTS_SNIPPET_TOKENS: int = 32
 

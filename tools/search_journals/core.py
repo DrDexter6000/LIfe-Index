@@ -26,10 +26,10 @@ from ..lib.entity_runtime import (
 )
 from ..lib.entity_relations import normalize_relation, relation_aliases
 from ..lib.entity_schema import EntityGraphValidationError
+from ..lib.errors import LifeIndexError
 from ..lib.search_constants import (
     SEMANTIC_TOP_K_DEFAULT,
     SEMANTIC_MIN_SIMILARITY,
-    FTS_MIN_RELEVANCE,
     RRF_MIN_SCORE,
     NON_RRF_MIN_SCORE,
     SEMANTIC_WEIGHT_DEFAULT,
@@ -880,6 +880,17 @@ def _finalize_level3_results(
     result["total_found"] = total_matches
     result["has_more"] = False
 
+    # Phase 1: establish retrieval_coverage.v1 as the single authority for
+    # completeness, then PROJECT the legacy total_*/has_more fields from it so
+    # they cannot drift. The presentation layer re-scopes ``returned``/``offset``
+    # for a paginated response window and re-projects.
+    from .coverage import build_coverage_for_result, project_legacy_from_coverage
+
+    result["retrieval_coverage"] = build_coverage_for_result(
+        result, returned=total_matches, offset=0
+    )
+    result.update(project_legacy_from_coverage(result["retrieval_coverage"]))
+
     result["no_confident_match"] = _compute_no_confident_match(result["merged_results"])
 
     from .title_promotion import apply_title_promotion
@@ -974,6 +985,37 @@ def _build_entity_expansion_attribution(entity_hints: list[dict[str, Any]]) -> d
     return {"applied": bool(expansions), "expansions": expansions}
 
 
+def _finalize_fail_closed(
+    result: Dict[str, Any], exc: "LifeIndexError", start_time: float, *, emit_metrics: bool = True
+) -> None:
+    """Fail closed: refuse a potentially-truncated subset. Mutates result in place.
+
+    The retrieval hit the high-cardinality safety bound. Rather than return a
+    truncated subset that could be mistaken for the complete set, surface a
+    closed, machine-readable resource failure through the EXISTING search error
+    envelope (``LifeIndexError`` → E0301 + ``details.reason =
+    retrieval_resource_bound``). No merged_results subset and no false-complete
+    coverage object are emitted; the error envelope is the authority here.
+    """
+    err = exc.to_json()
+    result["success"] = False
+    result["error"] = err["error"]
+    result["merged_results"] = []
+    result["semantic_results"] = []
+    result["total_matches"] = 0
+    result["total_found"] = 0
+    result["total_available"] = 0
+    result["has_more"] = False
+    result["no_confident_match"] = True
+    result["performance"]["total_time_ms"] = round((time.time() - start_time) * 1000, 2)
+    result["warnings"].append(
+        "retrieval_resource_bound: observed candidate set exceeded the safety "
+        "bound; refusing to return a potentially-truncated subset"
+    )
+    if emit_metrics:
+        _emit_search_metrics(result)
+
+
 def hierarchical_search(
     query: Optional[str] = None,
     topic: Optional[str] = None,
@@ -995,7 +1037,11 @@ def hierarchical_search(
     # Web-only recall overrides
     semantic_top_k: int = SEMANTIC_TOP_K_DEFAULT,
     semantic_min_similarity: float = SEMANTIC_MIN_SIMILARITY,
-    fts_min_relevance: int = FTS_MIN_RELEVANCE,
+    # Phase 1 (#1): the default effective token-match relevance threshold is 0.
+    # Neither the FTS layer nor the merge/ranking layer may drop low-relevance
+    # token-matches via a dynamic threshold by default. An explicit nonzero
+    # value still applies (and is counted) — see keyword_pipeline + coverage.
+    fts_min_relevance: int = 0,
     rrf_min_score: float = RRF_MIN_SCORE,
     non_rrf_min_score: float = NON_RRF_MIN_SCORE,
     explain: bool = False,  # Task 2.1: explain mode
@@ -1284,69 +1330,77 @@ def hierarchical_search(
         if classification_warning:
             result["warnings"].append(classification_warning)
 
-    (
-        l1_results,
-        l2_results,
-        l3_results,
-        l2_truncated,
-        l2_total_available,
-        kw_perf,
-    ) = run_keyword_pipeline(
-        query=query,
-        topic=topic,
-        project=project,
-        tags=tags,
-        mood=mood,
-        people=people,
-        date_from=date_from,
-        date_to=date_to,
-        location=location,
-        weather=weather,
-        use_index=use_index,
-        fts_min_relevance=fts_min_relevance,
-        candidate_paths=candidate_paths,
-        entity_expanded=_entity_expanded,
-        use_metadata_cache=use_metadata_cache,
-    )
+    # Phase 1 (#6): a high-cardinality / resource-bound failure inside the
+    # retrieval pipeline raises a structured LifeIndexError. Fail CLOSED — surface
+    # it via the standard error envelope (success=false, E0301) instead of
+    # returning a truncated subset or letting a bare exception escape.
+    try:
+        (
+            l1_results,
+            l2_results,
+            l3_results,
+            l2_truncated,
+            l2_total_available,
+            kw_perf,
+        ) = run_keyword_pipeline(
+            query=query,
+            topic=topic,
+            project=project,
+            tags=tags,
+            mood=mood,
+            people=people,
+            date_from=date_from,
+            date_to=date_to,
+            location=location,
+            weather=weather,
+            use_index=use_index,
+            fts_min_relevance=fts_min_relevance,
+            candidate_paths=candidate_paths,
+            entity_expanded=_entity_expanded,
+            use_metadata_cache=use_metadata_cache,
+        )
 
-    # R1-Prep: Structured metadata retrieval (shared helper)
-    _augment_with_structured_metadata(
-        l2_results,
-        candidate_paths,
-        _plan,
-        date_from,
-        date_to,
-        result,
-        use_metadata_cache=use_metadata_cache,
-    )
+        # R1-Prep: Structured metadata retrieval (shared helper)
+        _augment_with_structured_metadata(
+            l2_results,
+            candidate_paths,
+            _plan,
+            date_from,
+            date_to,
+            result,
+            use_metadata_cache=use_metadata_cache,
+        )
 
-    l1_results = _filter_results_by_candidates(l1_results, candidate_paths)
-    l2_results = _filter_results_by_candidates(l2_results, candidate_paths)
-    l3_results = _filter_results_by_candidates(l3_results, candidate_paths)
+        l1_results = _filter_results_by_candidates(l1_results, candidate_paths)
+        l2_results = _filter_results_by_candidates(l2_results, candidate_paths)
+        l3_results = _filter_results_by_candidates(l3_results, candidate_paths)
 
-    result["l1_results"] = l1_results
-    result["l2_results"] = l2_results
-    result["l3_results"] = l3_results
-    result["semantic_results"] = []
-    result["semantic_available"] = False
-    if l2_truncated:
-        result["l2_truncated"] = True
-        result["l2_total_available"] = l2_total_available
-    result["performance"].update(kw_perf)
+        result["l1_results"] = l1_results
+        result["l2_results"] = l2_results
+        result["l3_results"] = l3_results
+        result["semantic_results"] = []
+        result["semantic_available"] = False
+        if l2_truncated:
+            result["l2_truncated"] = True
+            result["l2_total_available"] = l2_total_available
+        result["performance"].update(kw_perf)
 
-    result["merged_results"] = merge_and_rank_results(
-        l1_results,
-        l2_results,
-        l3_results,
-        query,
-        entity_hints=entity_hints,
-        explain=explain,
-        topic_hints=_topic_hints,
-        date_range=_date_range,
-        enable_source_tier=enable_source_tier,
-        relation_context="cache" if use_metadata_cache else "source",
-    )
+        result["merged_results"] = merge_and_rank_results(
+            l1_results,
+            l2_results,
+            l3_results,
+            query,
+            min_score=fts_min_relevance,
+            entity_hints=entity_hints,
+            explain=explain,
+            topic_hints=_topic_hints,
+            date_range=_date_range,
+            enable_source_tier=enable_source_tier,
+            relation_context="cache" if use_metadata_cache else "source",
+        )
 
-    _finalize_level3_results(result, query, start_time, explain, emit_metrics=emit_metrics)
+        _finalize_level3_results(result, query, start_time, explain, emit_metrics=emit_metrics)
+    except LifeIndexError as exc:
+        _finalize_fail_closed(result, exc, start_time, emit_metrics=emit_metrics)
 
     return result

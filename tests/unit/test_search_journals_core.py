@@ -671,7 +671,14 @@ class TestHierarchicalSearch:
         mock_l3.assert_called_once()
 
     def test_search_level3_fallback_results_do_not_get_default_relevance_50(self):
-        """Fallback-only L3 results should not be inflated by ranking defaults."""
+        """Fallback-only L3 results must not be inflated by ranking defaults.
+
+        Phase 1 (#1): the default token-match relevance threshold is 0, so a
+        weak fallback token-match is admitted rather than dropped by a nonzero
+        ranking threshold. The guard this test locks is the absence of the
+        legacy relevance-inflation default: a fallback without an explicit
+        ``relevance`` must NOT be assigned 50 — it stays at its true value (0).
+        """
         from tools.search_journals.core import hierarchical_search
 
         with patch("tools.search_journals.keyword_pipeline.search_l2_metadata") as mock_l2:
@@ -700,7 +707,10 @@ class TestHierarchicalSearch:
                 )
 
         assert result["success"] is True
-        assert result["merged_results"] == []
+        merged = result["merged_results"]
+        # Admitted under the default threshold=0, but NOT inflated to 50.
+        assert len(merged) == 1
+        assert merged[0]["relevance_score"] == 0
 
     def test_search_level3_truncated_propagation(self):
         """Level 3 should propagate truncated flag from metadata pipeline"""

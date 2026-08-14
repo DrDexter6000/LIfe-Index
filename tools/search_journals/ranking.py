@@ -493,8 +493,22 @@ def merge_and_rank_results(
         pos = title.find(q.lower()) if q else -1
         return pos if pos != -1 else 9999
 
-    sorted_results = sorted(
-        scored.values(),
+    def _candidate_sort_path(data: dict) -> str:
+        """Canonical path used as the FINAL tie-breaker (path-ascending).
+
+        Phase 1 (#3): when score, tier, and title-phrase position all tie, a
+        deterministic path-ascending order guarantees that paginating the same
+        query never overlaps or skips. We pre-sort by this key, then run the
+        stable main sort so equal-key rows retain path-ascending order.
+        """
+        return str(data.get("rel_path") or data.get("journal_route_path") or data.get("path") or "")
+
+    # Two-step stable sort: (1) path-ascending baseline, then (2) the main sort
+    # by (score desc, tier desc, title-position asc). Python's stable sort keeps
+    # the path-ascending order among rows that tie on every main key, so the
+    # path tie-breaker applies only when all existing sort keys tie.
+    sorted_results = sorted(scored.values(), key=lambda x: _candidate_sort_path(x["data"]))
+    sorted_results.sort(
         key=lambda x: (
             x["score"],
             x["tier"],
@@ -503,11 +517,11 @@ def merge_and_rank_results(
         reverse=True,
     )
 
-    # 分层阈值：L3 (FTS) 使用 FTS_MIN_RELEVANCE，L2/L1 使用更宽松的 NON_RRF_MIN_SCORE
-    effective_fts_threshold = _compute_dynamic_fts_threshold(
-        sorted_results,
-        base_threshold=min_score,
-    )
+    # 分层阈值：L3 (FTS) 使用 min_score（Phase 1：默认 token-match 阈值=0，不再用
+    # 动态 Tukey 阈值丢弃低相关 token-match），L2/L1 使用更宽松的 NON_RRF_MIN_SCORE。
+    # _compute_dynamic_fts_threshold / _tukey_fence_threshold 保留定义（单元测试覆盖），
+    # 但不再在合并/排序路径调用。
+    effective_fts_threshold = min_score
 
     def _passes_threshold(item: Dict[str, Any]) -> bool:
         tier: int = int(item.get("tier", 0))
