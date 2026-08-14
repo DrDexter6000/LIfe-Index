@@ -704,16 +704,13 @@ def test_creation_case_collision_returns_failure_envelope_without_publication(
     from tools import backup as backup_module
 
     real_artifact_record = backup_module._artifact_record
-    first_journal_path: str | None = None
+    journal_2025_locator = "Journals/2025/12/life-index_2025-12-31_001.md"
+    journal_2026_locator = "Journals/2026/01/life-index_2026-01-02_001.md"
 
     def inject_case_collision(*, path: str, file_path: Path) -> dict[str, Any]:
-        nonlocal first_journal_path
         record = real_artifact_record(path=path, file_path=file_path)
-        if record["path"].startswith("Journals/2025/"):
-            first_journal_path = record["path"]
-        elif record["path"].startswith("Journals/2026/"):
-            assert first_journal_path is not None
-            parent, filename = first_journal_path.rsplit("/", 1)
+        if record["path"] == journal_2026_locator:
+            parent, filename = journal_2025_locator.rsplit("/", 1)
             record["path"] = f"{parent}/{filename.upper()}"
         return record
 
