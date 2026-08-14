@@ -103,6 +103,16 @@ rewrite, multi-hop calls, interpretation, and synthesis in the host agent.
 Never invent evidence or treat `entity_expansion` as a filter or adjudicator;
 use it only to explain alias or relationship attribution.
 
+Retrieval threshold and completeness: `life-index search` runs with
+`min_relevance=0` by default. `min_relevance=0` is the intentional Phase 1 recall-first default: search passes an explicit zero token-match threshold and thereby bypasses the legacy high-frequency dynamic threshold; this is by design, not an omission.
+Whether a search has seen the whole admitted set is governed by the returned
+`retrieval_coverage` object (`retrieval_coverage.v1`), not by the legacy
+`total_*` fields alone: `status: "complete"` is the only proof of completeness,
+`next_offset` only says the same deterministic query can mechanically continue
+(page forward by exactly that value; level 1/2 windows paginate
+`l1_results`/`l2_results`), and any `partial_reasons` entry names the honest
+gap.
+
 Consume `evidence_pack.diagnostics.retrieval_outcome` as follows:
 
 | Outcome | Host-agent action |

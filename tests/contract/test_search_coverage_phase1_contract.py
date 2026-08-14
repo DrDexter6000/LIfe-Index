@@ -382,15 +382,19 @@ def test_c_nonzero_offset_final_page_is_not_complete(
     assert coverage["returned"] == 1
     assert coverage["next_offset"] is None
     # Any response window that does not carry the whole admitted set — including a
-    # nonzero-offset final page — must list unread_page, and a binding presentation
-    # limit must be recorded as result_limit:<n>.
+    # nonzero-offset final page — must list unread_page. The window here is bounded
+    # by the OFFSET, not the limit (limit 2 >= the 1 remaining candidate), so no
+    # result_limit may be recorded: an offset-only final page is not a limit cap.
     assert "unread_page" in coverage["partial_reasons"], (
         "a window that does not carry the whole admitted set must list unread_page, "
         "even when next_offset is null"
     )
-    assert any(
+    assert not any(
         str(limit).startswith("result_limit:") for limit in coverage["limits_applied"]
-    ), "a binding presentation limit must be recorded as result_limit:<n>"
+    ), (
+        "an offset-only final page must not record result_limit; the offset, not the "
+        "limit, bounded this window"
+    )
 
 
 # ── (d) explicit threshold: partial only when it actually excludes ────────────
@@ -702,3 +706,487 @@ def test_j_legacy_totals_are_projections_of_coverage(isolated_data_dir: Path) ->
     assert page["total_available"] == covp["observed_total"]
     assert page["total_found"] == covp["returned"]
     assert page["has_more"] == (covp["next_offset"] is not None)
+
+
+# ── Phase 1 corrective helpers ──────────────────────────────────────────────
+
+
+def _fresh_index_patches() -> tuple[Any, Any]:
+    """Patch the freshness guard so no real index build runs during a test."""
+    from tools.lib.index_freshness import FreshnessReport
+
+    fresh = FreshnessReport(fts_fresh=True, vector_fresh=True, overall_fresh=True, issues=[])
+    return (
+        patch("tools.lib.pending_writes.has_pending", return_value=False),
+        patch("tools.lib.index_freshness.check_full_freshness", return_value=fresh),
+    )
+
+
+# ── (k) structured rebuild failure must not claim a self-healed index ─────────
+
+
+def test_k_structured_rebuild_failure_keeps_auto_updated_false(
+    isolated_data_dir: Path,
+) -> None:
+    """A structured success=false rebuild (LockTimeout-style) must stay unfresh.
+
+    ``_build_all`` can return a structured failure instead of raising — e.g. the
+    LockTimeout error envelope ``{"success": false, "error": {"code": "E0005"}}``.
+    Treating that as a successful auto-update (``auto_updated=true``) erases the
+    index_not_fresh signal and lets a stale-index retrieval claim ``complete``.
+    The failure must keep ``auto_updated=false`` and record a stable warning.
+    """
+    from tools.lib.errors import ErrorCode, create_error_response
+    from tools.lib.index_freshness import FreshnessReport
+    from tools.search_journals.core import hierarchical_search
+
+    token = "rebuildtoken"
+    _write_two_line_body_journal(isolated_data_dir, date_str="2026-01-05", token=token, seq=1)
+
+    stale_report = FreshnessReport(
+        fts_fresh=False,
+        vector_fresh=True,
+        overall_fresh=False,
+        issues=["fts_index_older_than_corpus"],
+    )
+    lock_timeout_result = create_error_response(
+        ErrorCode.LOCK_TIMEOUT,
+        "无法获取索引锁，请稍后重试",
+        {"lock_path": "C:/tmp/index.lock", "timeout": 30},
+    )
+    with (
+        patch("tools.lib.pending_writes.has_pending", return_value=False),
+        patch("tools.lib.index_freshness.check_full_freshness", return_value=stale_report),
+        patch("tools.build_index.build_all", return_value=lock_timeout_result),
+    ):
+        result = hierarchical_search(query=token, use_index=False)
+
+    assert (
+        result["index_status"]["auto_updated"] is False
+    ), "a structured success=false rebuild result must not set auto_updated=true"
+    assert (
+        "index_update_failed: E0005" in result["warnings"]
+    ), "a failed rebuild must record a stable warning keyed by the structured error code"
+    coverage = find_coverage(result)
+    assert coverage is not None
+    assert (
+        coverage["status"] == "partial"
+    ), "a retrieval over an index whose rebuild failed must not claim complete"
+    assert "index_not_fresh" in coverage["partial_reasons"]
+
+
+def test_k_structured_rebuild_failure_without_error_code_is_still_unfresh(
+    isolated_data_dir: Path,
+) -> None:
+    """A structured failure without an ``error`` envelope must also stay unfresh.
+
+    ``_build_all`` may report failure through a nested ``fts.error`` instead of a
+    top-level error envelope; the honest treatment is identical: no
+    ``auto_updated=true`` and a stable warning.
+    """
+    from tools.lib.index_freshness import FreshnessReport
+    from tools.search_journals.core import hierarchical_search
+
+    token = "rebuildfts token"
+    _write_two_line_body_journal(isolated_data_dir, date_str="2026-01-06", token=token, seq=1)
+
+    stale_report = FreshnessReport(
+        fts_fresh=False,
+        vector_fresh=True,
+        overall_fresh=False,
+        issues=["no_manifest: No index manifest found, run 'life-index index'"],
+    )
+    with (
+        patch("tools.lib.pending_writes.has_pending", return_value=False),
+        patch("tools.lib.index_freshness.check_full_freshness", return_value=stale_report),
+        patch(
+            "tools.build_index.build_all",
+            return_value={"success": False, "fts": {"success": False, "error": "disk full"}},
+        ),
+    ):
+        result = hierarchical_search(query=token, use_index=False)
+
+    assert result["index_status"]["auto_updated"] is False
+    assert any(
+        str(w).startswith("index_update_failed:") for w in result["warnings"]
+    ), "the failed rebuild must still record an index_update_failed warning"
+    coverage = find_coverage(result)
+    assert coverage is not None
+    assert "index_not_fresh" in coverage["partial_reasons"]
+
+
+# ── (l) result_limit records only a limit that truly bound the window ─────────
+
+
+def test_l_result_limit_only_recorded_when_limit_binds(isolated_data_dir: Path) -> None:
+    """An offset-only final page is not a limit cap; a binding limit still is.
+
+    * population 5, offset 3, limit 10 → the window returns 2 because only 2
+      remain after the offset; the limit never bound it → NO ``result_limit``.
+    * population 5, offset 0, limit 2 → the limit genuinely cut the window
+      short of the admitted set → ``result_limit:2`` must be recorded.
+    """
+    from tools.search_journals.__main__ import run_search
+
+    token = "limitbindtoken"
+    base = date(2026, 5, 1)
+    for i in range(5):
+        _write_two_line_body_journal(
+            isolated_data_dir,
+            date_str=(base + timedelta(days=i)).isoformat(),
+            token=token,
+            seq=i + 1,
+        )
+
+    final_page = run_search(query=token, use_index=False, limit=10, offset=3, include_events=False)
+    cov = find_coverage(final_page)
+    assert cov is not None
+    assert cov["observed_total"] == 5
+    assert cov["returned"] == 2
+    assert cov["next_offset"] is None
+    assert cov["status"] == "partial"
+    assert "unread_page" in cov["partial_reasons"]
+    assert not any(
+        str(entry).startswith("result_limit:") for entry in cov["limits_applied"]
+    ), "an offset-only final page must not record result_limit"
+
+    first_page = run_search(query=token, use_index=False, limit=2, offset=0, include_events=False)
+    cov1 = find_coverage(first_page)
+    assert cov1 is not None
+    assert cov1["returned"] == 2
+    assert cov1["next_offset"] == 2
+    assert "result_limit:2" in [
+        str(entry) for entry in cov1["limits_applied"]
+    ], "a limit that actually excluded admitted candidates must be recorded"
+
+
+# ── (m) empty / high-offset windows never report a non-advancing next_offset ──
+
+
+def test_m_empty_or_high_offset_window_never_reports_non_advancing_next_offset() -> None:
+    """An empty window must never emit next_offset 0 or a cursor equal to offset.
+
+    A ``next_offset`` that does not advance past the current offset (0 on an
+    empty first window, or the same offset on an empty mid-corpus window) traps
+    a paging Host Agent in a loop. Such windows stay honestly ``partial`` with
+    ``unread_page`` but carry no mechanical cursor.
+    """
+    from tools.search_journals.coverage import build_retrieval_coverage
+
+    empty_first = build_retrieval_coverage(observed_total=3, returned=0, offset=0)
+    assert empty_first["next_offset"] is None, "an empty first window must not emit next_offset=0"
+    assert empty_first["status"] == "partial"
+    assert "unread_page" in empty_first["partial_reasons"]
+
+    empty_mid = build_retrieval_coverage(observed_total=5, returned=0, offset=2)
+    assert (
+        empty_mid["next_offset"] is None
+    ), "an empty window must not emit a next_offset equal to the current offset"
+
+    high_offset = build_retrieval_coverage(observed_total=5, returned=0, offset=7)
+    assert high_offset["next_offset"] is None
+
+
+# ── (n) level 1 / level 2 paginate their own result arrays with real coverage ──
+
+
+def test_n_level1_paginates_l1_results_with_required_coverage(
+    isolated_data_dir: Path,
+) -> None:
+    """Level 1 must paginate ``l1_results`` and carry a truthful coverage object.
+
+    The API declares ``retrieval_coverage`` as always present. A level-1 response
+    must therefore build coverage from the actual complete ``l1_results`` array
+    (not from the empty ``merged_results``), slice ``l1_results`` for a page
+    window, and keep the legacy totals as projections of that coverage.
+    """
+    from tools.search_journals.__main__ import run_search
+
+    l1_items = [
+        {"path": f"Journals/2026/01/note{seq}.md", "date": "2026-01-05"} for seq in range(5)
+    ]
+    fresh_pending, fresh_report = _fresh_index_patches()
+    with (
+        fresh_pending,
+        fresh_report,
+        patch("tools.search_journals.core.scan_all_indices", return_value=l1_items),
+    ):
+        page1 = run_search(level=1, limit=2, offset=0, include_events=False)
+        page2 = run_search(level=1, limit=2, offset=2, include_events=False)
+        final_page = run_search(level=1, limit=2, offset=4, include_events=False)
+        full = run_search(level=1, limit=0, offset=0, include_events=False)
+
+    assert len(page1["l1_results"]) == 2, "level 1 must paginate l1_results, not merged_results"
+    cov1 = find_coverage(page1)
+    assert cov1 is not None, "level 1 must carry the API-required retrieval_coverage object"
+    assert cov1["schema_version"] == _COVERAGE_SCHEMA_VERSION
+    assert cov1["observed_total"] == 5
+    assert cov1["returned"] == 2
+    assert cov1["next_offset"] == 2
+    assert page1["total_matches"] == cov1["observed_total"]
+    assert page1["total_available"] == cov1["observed_total"]
+    assert page1["total_found"] == cov1["returned"]
+    assert page1["has_more"] is True
+
+    assert len(page2["l1_results"]) == 2
+    assert find_coverage(page2)["next_offset"] == 4
+
+    assert len(final_page["l1_results"]) == 1
+    covf = find_coverage(final_page)
+    assert covf["status"] == "partial"
+    assert covf["next_offset"] is None
+    assert "unread_page" in covf["partial_reasons"]
+    assert not any(
+        str(entry).startswith("result_limit:") for entry in covf["limits_applied"]
+    ), "the offset-only final page of level 1 must not record result_limit"
+
+    cov_full = find_coverage(full)
+    assert cov_full is not None
+    assert cov_full["status"] == "complete"
+    assert len(full["l1_results"]) == 5
+
+
+def test_n_level2_paginates_l2_results_with_required_coverage(
+    isolated_data_dir: Path,
+) -> None:
+    """Level 2 must paginate ``l2_results`` with coverage as the totals authority."""
+    from tools.search_journals.__main__ import run_search
+
+    l2_items = [
+        {"path": f"Journals/2026/02/note{seq}.md", "date": "2026-02-05"} for seq in range(3)
+    ]
+    fresh_pending, fresh_report = _fresh_index_patches()
+    with (
+        fresh_pending,
+        fresh_report,
+        patch(
+            "tools.search_journals.core.search_l2_metadata",
+            return_value={"results": l2_items, "truncated": False, "total_available": 3},
+        ),
+    ):
+        page1 = run_search(level=2, limit=2, offset=0, include_events=False)
+        final_page = run_search(level=2, limit=2, offset=2, include_events=False)
+
+    assert len(page1["l2_results"]) == 2, "level 2 must paginate l2_results, not merged_results"
+    cov1 = find_coverage(page1)
+    assert cov1 is not None, "level 2 must carry the API-required retrieval_coverage object"
+    assert cov1["observed_total"] == 3
+    assert cov1["returned"] == 2
+    assert cov1["next_offset"] == 2
+    assert page1["total_matches"] == cov1["observed_total"]
+    assert page1["total_found"] == cov1["returned"]
+    assert page1["has_more"] is True
+
+    assert len(final_page["l2_results"]) == 1
+    covf = find_coverage(final_page)
+    assert covf["status"] == "partial"
+    assert covf["observed_total"] == 3
+    assert covf["returned"] == 1
+    assert covf["next_offset"] is None
+    assert "unread_page" in covf["partial_reasons"]
+    assert final_page["total_found"] == 1
+    assert final_page["total_matches"] == covf["observed_total"]
+
+
+# ── (o) FTS min-hits exclusion is an honest partial; recovery is not ───────────
+
+
+def _min_hits_fts_items() -> list[dict[str, Any]]:
+    """Two FTS hits for the segmented query ``苹果香蕉`` (required hits = 2).
+
+    The first hits both non-stopword tokens; the second hits only ``苹果`` and is
+    the candidate the min-hits post-filter drops.
+    """
+    return [
+        {
+            "path": "Journals/2026/03/both.md",
+            "date": "2026-03-01",
+            "title": "苹果 香蕉 沙拉",
+            "snippet": "同时包含 苹果 和 香蕉",
+            "relevance": 60,
+        },
+        {
+            "path": "Journals/2026/03/one.md",
+            "date": "2026-03-02",
+            "title": "苹果派记录",
+            "snippet": "只提到 苹果",
+            "relevance": 40,
+        },
+    ]
+
+
+def test_o_min_hits_exclusion_marks_partial_with_stable_signal(
+    isolated_data_dir: Path,
+) -> None:
+    """A candidate still excluded by the FTS min-hits filter must not be complete.
+
+    The min-hits post-filter keeps its filtering semantics, but a candidate it
+    dropped — and that no fallback recovered — must surface through a stable
+    coverage signal instead of a silent ``complete``.
+    """
+    from tools.search_journals.core import hierarchical_search
+
+    fresh_pending, fresh_report = _fresh_index_patches()
+    with (
+        fresh_pending,
+        fresh_report,
+        patch(
+            "tools.search_journals.keyword_pipeline.search_l2_metadata",
+            return_value={"results": [], "truncated": False, "total_available": 0},
+        ),
+        patch("tools.lib.search_index.search_fts", return_value=_min_hits_fts_items()),
+        patch("tools.search_journals.keyword_pipeline.search_l3_content", return_value=[]),
+    ):
+        result = hierarchical_search(query="苹果香蕉", use_index=True, emit_metrics=False)
+
+    coverage = find_coverage(result)
+    assert coverage is not None
+    assert coverage["status"] == "partial", (
+        "a retrieval that dropped a candidate via the FTS min-hits filter must not "
+        "claim complete"
+    )
+    assert "threshold_excluded" in coverage["partial_reasons"]
+    assert any(
+        str(entry).startswith("fts_min_hits:") for entry in coverage["limits_applied"]
+    ), "the min-hits exclusion must carry a stable closed-set limit entry"
+    assert len(result["merged_results"]) == 1, "the surviving both-token match is returned"
+
+
+def test_o_min_hits_recovery_by_fallback_reports_no_gap(
+    isolated_data_dir: Path,
+) -> None:
+    """A min-hits exclusion fully recovered by the fallback is not a gap.
+
+    When the full-corpus fallback re-admits the excluded candidate, reporting a
+    min-hits gap anyway would double-report a defect that no longer exists; the
+    retrieval stays ``complete``.
+    """
+    from tools.search_journals.core import hierarchical_search
+
+    recovered = [
+        {
+            "path": "Journals/2026/03/one.md",
+            "journal_route_path": "2026/03/one.md",
+            "date": "2026-03-02",
+            "title": "苹果派记录",
+            "snippet": "只提到 苹果",
+            "match_count": 1,
+            "source": "content_search",
+            "relevance": 20,
+        }
+    ]
+    fresh_pending, fresh_report = _fresh_index_patches()
+    with (
+        fresh_pending,
+        fresh_report,
+        patch(
+            "tools.search_journals.keyword_pipeline.search_l2_metadata",
+            return_value={"results": [], "truncated": False, "total_available": 0},
+        ),
+        patch("tools.lib.search_index.search_fts", return_value=_min_hits_fts_items()),
+        patch("tools.search_journals.keyword_pipeline.search_l3_content", return_value=recovered),
+    ):
+        result = hierarchical_search(query="苹果香蕉", use_index=True, emit_metrics=False)
+
+    coverage = find_coverage(result)
+    assert coverage is not None
+    assert (
+        coverage["status"] == "complete"
+    ), "a min-hits exclusion recovered by the fallback must not be reported as a gap"
+    assert "threshold_excluded" not in coverage["partial_reasons"]
+    assert not any(str(entry).startswith("fts_min_hits:") for entry in coverage["limits_applied"])
+    assert len(result["merged_results"]) == 2
+
+
+# ── (p) candidate_paths filtering must not erase the L2 source-cap fact ────────
+
+
+def test_p_candidate_filter_does_not_hide_l2_source_cap(
+    isolated_data_dir: Path,
+) -> None:
+    """The upstream L2 source-cap total must survive the candidate filter.
+
+    When an L0 prefilter (candidate_paths) narrows the L2 result list, the
+    upstream ``total_available`` / ``truncated`` facts are about the SOURCE, not
+    about the filtered window; overwriting them hides a real retrieval cap.
+    """
+    import os
+
+    from tools.search_journals.keyword_pipeline import run_keyword_pipeline
+
+    kept = str((isolated_data_dir / "Journals" / "2026" / "03" / "a.md").resolve()).replace(
+        "\\", "/"
+    )
+    dropped = str((isolated_data_dir / "Journals" / "2026" / "03" / "b.md").resolve()).replace(
+        "\\", "/"
+    )
+    assert os.environ.get("LIFE_INDEX_DATA_DIR") == str(isolated_data_dir)
+
+    with patch(
+        "tools.search_journals.keyword_pipeline.search_l2_metadata",
+        return_value={
+            "results": [
+                {"path": kept, "date": "2026-03-01"},
+                {"path": dropped, "date": "2026-03-02"},
+            ],
+            "truncated": True,
+            "total_available": 50,
+        },
+    ):
+        _l1, l2_results, _l3, l2_truncated, l2_total_available, _perf = run_keyword_pipeline(
+            query="capsrctoken2", candidate_paths={kept}, use_index=False
+        )
+
+    assert l2_truncated is True, "the upstream truncation flag must survive the filter"
+    assert len(l2_results) == 1, "the candidate filter still narrows the returned window"
+    assert (
+        l2_total_available == 50
+    ), "the upstream L2 source-cap total must not be overwritten with the filtered count"
+
+
+# ── (q) docs state the min_relevance=0 recall-first intent; vocabulary narrowed ─
+
+
+_MIN_RELEVANCE_DOC_MARKER = (
+    "`min_relevance=0` is the intentional Phase 1 recall-first default: search "
+    "passes an explicit zero token-match threshold and thereby bypasses the "
+    "legacy high-frequency dynamic threshold; this is by design, not an omission."
+)
+
+
+def test_q_docs_state_min_relevance_zero_recall_first_intent() -> None:
+    """Canonical and packaged docs must state the min_relevance=0 intent."""
+    repo_root = Path(__file__).resolve().parents[2]
+    for rel in (
+        "docs/API.md",
+        "SKILL.md",
+        "references/GROUNDED_QUERY_PLAYBOOK.md",
+        "tools/_skill_artifacts/SKILL.md",
+        "tools/_skill_artifacts/references/GROUNDED_QUERY_PLAYBOOK.md",
+    ):
+        text = (repo_root / rel).read_text(encoding="utf-8")
+        assert _MIN_RELEVANCE_DOC_MARKER in text, (
+            f"{rel} must state that min_relevance=0 is the intentional Phase 1 "
+            "recall-first default, not an omission"
+        )
+
+
+def test_q_child_failed_is_not_an_emittable_partial_reason() -> None:
+    """The unreachable ``child_failed`` reason is removed from the public contract.
+
+    No code path can emit it in Phase 1, so it must not appear in the public
+    partial-reason vocabulary (module constants or documented enum).
+    """
+    import tools.search_journals.coverage as coverage_module
+
+    emitted_reasons = {
+        value
+        for name, value in vars(coverage_module).items()
+        if name.startswith("REASON_") and isinstance(value, str)
+    }
+    assert "child_failed" not in emitted_reasons
+
+    api_text = (Path(__file__).resolve().parents[2] / "docs" / "API.md").read_text(encoding="utf-8")
+    assert "child_failed" not in api_text, (
+        "the documented partial_reasons vocabulary must not advertise an " "unreachable reason"
+    )

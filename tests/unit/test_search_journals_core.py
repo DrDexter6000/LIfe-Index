@@ -1027,5 +1027,147 @@ class TestSearchParams:
         assert result["query_params"]["level"] == 2
 
 
+class TestStaleIndexRebuildCorrective:
+    """M4 Search Phase 1 corrective: structured rebuild failures stay unfresh."""
+
+    @pytest.fixture(autouse=True)
+    def _isolate_data_dir(self, tmp_path: Path, monkeypatch):
+        monkeypatch.setenv("LIFE_INDEX_DATA_DIR", str(tmp_path))
+
+    def _stale_report(self):
+        return FreshnessReport(
+            fts_fresh=False,
+            vector_fresh=True,
+            overall_fresh=False,
+            issues=["fts_index_older_than_corpus"],
+        )
+
+    def test_stale_rebuild_locktimeout_result_keeps_auto_updated_false(self):
+        """A LockTimeout-style structured failure must not claim auto_updated."""
+        from tools.lib.errors import ErrorCode, create_error_response
+        from tools.search_journals.core import hierarchical_search
+
+        lock_timeout = create_error_response(
+            ErrorCode.LOCK_TIMEOUT,
+            "无法获取索引锁，请稍后重试",
+            {"lock_path": "C:/tmp/index.lock", "timeout": 30},
+        )
+        with (
+            patch("tools.lib.pending_writes.has_pending", return_value=False),
+            patch(
+                "tools.lib.index_freshness.check_full_freshness",
+                return_value=self._stale_report(),
+            ),
+            patch("tools.build_index.build_all", return_value=lock_timeout),
+        ):
+            result = hierarchical_search(query="staletoken", level=3, use_index=False)
+
+        assert (
+            result["index_status"]["auto_updated"] is False
+        ), "a structured success=false rebuild result must not set auto_updated=true"
+        assert (
+            "index_update_failed: E0005" in result["warnings"]
+        ), "the warning must be stable, keyed by the structured error code"
+
+    def test_stale_rebuild_structured_failure_without_error_code(self):
+        """A nested fts-error failure is treated identically (no auto_updated)."""
+        from tools.search_journals.core import hierarchical_search
+
+        with (
+            patch("tools.lib.pending_writes.has_pending", return_value=False),
+            patch(
+                "tools.lib.index_freshness.check_full_freshness",
+                return_value=self._stale_report(),
+            ),
+            patch(
+                "tools.build_index.build_all",
+                return_value={"success": False, "fts": {"success": False, "error": "disk full"}},
+            ),
+        ):
+            result = hierarchical_search(query="staletoken", level=3, use_index=False)
+
+        assert result["index_status"]["auto_updated"] is False
+        assert any(
+            str(w).startswith("index_update_failed:") for w in result["warnings"]
+        ), "a stable index_update_failed warning must be recorded"
+
+    def test_stale_rebuild_success_still_sets_auto_updated_true(self):
+        """A genuinely successful rebuild keeps the self-healed fast path."""
+        from tools.search_journals.core import hierarchical_search
+
+        with (
+            patch("tools.lib.pending_writes.has_pending", return_value=False),
+            patch(
+                "tools.lib.index_freshness.check_full_freshness",
+                return_value=self._stale_report(),
+            ),
+            patch(
+                "tools.build_index.build_all",
+                return_value={"success": True, "fts": {"success": True}},
+            ),
+        ):
+            result = hierarchical_search(query="staletoken", level=3, use_index=False)
+
+        assert result["index_status"]["auto_updated"] is True
+        assert not any(str(w).startswith("index_update_failed:") for w in result["warnings"])
+
+    def test_stale_rebuild_exception_path_stays_fail_safe(self):
+        """A raising rebuild keeps the existing fail-safe behavior."""
+        from tools.search_journals.core import hierarchical_search
+
+        with (
+            patch("tools.lib.pending_writes.has_pending", return_value=False),
+            patch(
+                "tools.lib.index_freshness.check_full_freshness",
+                return_value=self._stale_report(),
+            ),
+            patch("tools.build_index.build_all", side_effect=RuntimeError("update failed")),
+        ):
+            result = hierarchical_search(query="staletoken", level=3, use_index=False)
+
+        assert result["index_status"]["auto_updated"] is False
+        assert result["success"] is True, "the retrieval itself still proceeds fail-safe"
+
+
+class TestMinRelevanceZeroDefault:
+    """M4 Search Phase 1: min_relevance=0 is the recall-first default, by design."""
+
+    def test_hierarchical_search_defaults_to_zero_min_relevance(self):
+        """The public search entry point defaults fts_min_relevance to 0."""
+        import inspect
+
+        from tools.search_journals.core import hierarchical_search
+
+        assert inspect.signature(hierarchical_search).parameters["fts_min_relevance"].default == 0
+
+    def test_zero_min_relevance_bypasses_high_frequency_dynamic_threshold(self):
+        """An explicit 0 override bypasses the legacy high-frequency threshold."""
+        from tools.lib.fts_search import _effective_min_relevance
+        from tools.lib.search_constants import FTS_MIN_RELEVANCE
+
+        assert _effective_min_relevance("Life Index 2026", 0) == 0
+        assert (
+            _effective_min_relevance("Life Index 2026", FTS_MIN_RELEVANCE) > FTS_MIN_RELEVANCE
+        ), "the legacy default still raises the threshold for high-frequency terms"
+
+    def test_keyword_pipeline_passes_zero_min_relevance_to_fts(self, tmp_path, monkeypatch):
+        """The default search path retrieves with min_relevance=0 and no SQL cap."""
+        from tools.search_journals.core import hierarchical_search
+
+        monkeypatch.setenv("LIFE_INDEX_DATA_DIR", str(tmp_path))
+        with (
+            patch(
+                "tools.search_journals.keyword_pipeline.search_l2_metadata",
+                return_value={"results": [], "truncated": False, "total_available": 0},
+            ),
+            patch("tools.lib.search_index.search_fts", return_value=[]) as mock_fts,
+            patch("tools.search_journals.core.merge_and_rank_results", return_value=[]),
+        ):
+            hierarchical_search(query="python testing", level=3, use_index=True, emit_metrics=False)
+
+        assert mock_fts.call_args.kwargs["min_relevance"] == 0
+        assert mock_fts.call_args.kwargs["limit"] == 0
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

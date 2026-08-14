@@ -152,6 +152,8 @@ for normal host-agent retrieval/navigation. They are debug-only legacy
 diagnostics retained for compatibility.
 Do not use `recall`, broad grep, or full-directory reads for new playbooks.
 
+**检索阈值与完整性（Phase 1 recall-first）**：`life-index search` 默认使用 `min_relevance=0`。`min_relevance=0` is the intentional Phase 1 recall-first default: search passes an explicit zero token-match threshold and thereby bypasses the legacy high-frequency dynamic threshold; this is by design, not an omission. 低相关 token 命中不会被动态阈值静默丢弃；是否“已看全”以返回值中的 `retrieval_coverage`（`retrieval_coverage.v1`）为权威 —— level 1/2 分页作用于 `l1_results`/`l2_results`，`next_offset` 只表示可继续翻页、不等于完整，翻页请按 `next_offset` 前进。
+
 <!-- GROUNDED_QUERY_SKILL_END -->
 
 ## Project Structure

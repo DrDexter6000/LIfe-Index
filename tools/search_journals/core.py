@@ -621,6 +621,23 @@ def resolve_query_entities(query: str) -> list[dict[str, Any]]:
     return hints
 
 
+def _finalize_level_scope(result: Dict[str, Any], results_key: str) -> None:
+    """Build retrieval_coverage.v1 for an early-return level (1/2) result.
+
+    The level's own complete result array (``l1_results`` / ``l2_results``) is
+    the admitted set: ``observed_total`` is its length, and the legacy
+    ``total_*`` / ``has_more`` fields are projections of the coverage authority
+    so no second totals truth exists. The presentation layer re-scopes
+    ``returned``/``offset`` for a paginated window and re-projects.
+    """
+    from .coverage import build_coverage_for_result, project_legacy_from_coverage
+
+    total = len(result[results_key])
+    result["total_matches"] = total
+    result["retrieval_coverage"] = build_coverage_for_result(result, returned=total, offset=0)
+    result.update(project_legacy_from_coverage(result["retrieval_coverage"]))
+
+
 def _search_level_1(
     *,
     result: Dict[str, Any],
@@ -652,9 +669,7 @@ def _search_level_1(
     result["l1_results"] = unique_l1
 
     result["performance"]["l1_time_ms"] = round((time.time() - l1_start) * 1000, 2)
-    result["total_found"] = len(result["l1_results"])
-    result["total_matches"] = len(result["l1_results"])
-    result["total_available"] = len(result["l1_results"])
+    _finalize_level_scope(result, "l1_results")
     result["performance"]["total_time_ms"] = round((time.time() - start_time) * 1000, 2)
     return result
 
@@ -719,9 +734,7 @@ def _search_level_2(
         result["l2_total_available"] = l2_response.get("total_available", 0)
 
     result["performance"]["l2_time_ms"] = round((time.time() - l2_start) * 1000, 2)
-    result["total_matches"] = len(result["l2_results"])
-    result["total_available"] = len(result["l2_results"])
-    result["total_found"] = len(result["l2_results"])
+    _finalize_level_scope(result, "l2_results")
     result["performance"]["total_time_ms"] = round((time.time() - start_time) * 1000, 2)
     return result
 
@@ -923,6 +936,27 @@ def _finalize_level3_results(
         f"(L1:{l1_time} L2:{l2_time} L3:{l3_time}) "
         f"| Results: {result['total_found']}{suffix}"
     )
+
+
+def _index_update_failure_reason(build_result: dict[str, Any]) -> str:
+    """Extract a stable failure identifier from an unsuccessful build result.
+
+    Prefers the structured error code (e.g. ``E0005`` for a LockTimeout-style
+    envelope) so the recorded warning stays stable across environments instead
+    of embedding paths, timeouts, or exception text.
+    """
+    error = build_result.get("error")
+    if isinstance(error, dict):
+        code = error.get("code")
+        if code:
+            return str(code)
+        return str(error.get("message") or "unknown index update failure")
+    if error:
+        return str(error)
+    fts_error = (build_result.get("fts") or {}).get("error")
+    if fts_error:
+        return str(fts_error)
+    return "unknown index update failure"
 
 
 def _classify_query_advisory(query: str) -> str | None:
@@ -1209,11 +1243,7 @@ def hierarchical_search(
                 result["index_status"]["auto_updated"] = True
                 result["index_status"]["pending_consumed"] = True
             else:
-                error = (
-                    build_result.get("error")
-                    or (build_result.get("fts") or {}).get("error")
-                    or "unknown index update failure"
-                )
+                error = _index_update_failure_reason(build_result)
                 logger.warning("Pending index update returned unsuccessful: %s", error)
                 result["warnings"].append(f"pending_index_update_failed: {error}")
                 result["pending_consumed"] = False
@@ -1240,8 +1270,21 @@ def hierarchical_search(
                 build_kwargs = {"incremental": True, "fts_only": True}
                 if derived_index_only:
                     build_kwargs["derived_index_only"] = True
-                _build_all(**build_kwargs)
-                result.setdefault("index_status", {})["auto_updated"] = True
+                build_result = _build_all(**build_kwargs)
+                build_success = (
+                    build_result.get("success", True) if isinstance(build_result, dict) else True
+                )
+                if build_success:
+                    result.setdefault("index_status", {})["auto_updated"] = True
+                else:
+                    # A structured failure (e.g. LockTimeout error envelope with
+                    # success=false) is NOT a self-healed index: keep
+                    # auto_updated=false so the retrieval stays honestly
+                    # partial (index_not_fresh) and record a stable warning.
+                    failure = _index_update_failure_reason(build_result)
+                    logger.warning("Auto index update returned unsuccessful: %s", failure)
+                    result.setdefault("index_status", {})["auto_updated"] = False
+                    result["warnings"].append(f"index_update_failed: {failure}")
             except Exception as exc:
                 logger.warning("Auto index update failed: %s", exc)
                 result.setdefault("index_status", {})["auto_updated"] = False

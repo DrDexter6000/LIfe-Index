@@ -14,8 +14,8 @@ returned the same admitted set with no remainder:
 * neither ``partial_reasons`` nor ``limits_applied`` record a defect.
 
 Anything else — a page slice, an explicit threshold that excluded candidates, an
-un-refreshed stale index, a retrieval cap, or a child-pipeline failure — makes
-the coverage *partial* and lists the honest reason.
+un-refreshed stale index, or a retrieval cap — makes the coverage *partial* and
+lists the honest reason.
 """
 
 from __future__ import annotations
@@ -25,12 +25,13 @@ from typing import Any
 SCHEMA_VERSION = "retrieval_coverage.v1"
 
 # Partial-reason vocabulary. These are the only allowed ``partial_reasons``
-# entries; each explains why a retrieval is not provably complete.
+# entries; each explains why a retrieval is not provably complete. Every entry
+# must have a real emission path — unreachable reasons are removed rather than
+# advertised.
 REASON_UNREAD_PAGE = "unread_page"  # more pages mechanically follow
 REASON_THRESHOLD_EXCLUDED = "threshold_excluded"  # explicit relevance threshold dropped >=1
 REASON_SOURCE_CAP = "source_cap"  # a retrieval cap truncated the observed set
 REASON_INDEX_NOT_FRESH = "index_not_fresh"  # un-refreshed stale / failed update
-REASON_CHILD_FAILED = "child_failed"  # a child pipeline failed
 
 
 def build_retrieval_coverage(
@@ -53,6 +54,11 @@ def build_retrieval_coverage(
     nonzero-offset final page where ``next_offset`` is already null. Such a window
     is always ``partial``.
 
+    ``next_offset`` is emitted only when it strictly advances past the current
+    offset; an empty window never yields ``next_offset == 0`` or a cursor equal
+    to the offset it was called with (a non-advancing cursor would trap a paging
+    caller in a loop).
+
     ``status`` is derived, never caller-supplied.
     """
     observed_total = int(observed_total or 0)
@@ -62,7 +68,9 @@ def build_retrieval_coverage(
     reasons = list(partial_reasons or [])
     applied = list(limits_applied or [])
 
-    next_offset = offset + returned if (offset + returned) < observed_total else None
+    next_offset = (
+        offset + returned if returned > 0 and (offset + returned) < observed_total else None
+    )
     if returned < observed_total and REASON_UNREAD_PAGE not in reasons:
         reasons.append(REASON_UNREAD_PAGE)
 
@@ -116,6 +124,24 @@ def _collect_threshold_signal(result: dict[str, Any]) -> tuple[list[str], list[s
     return reasons, applied
 
 
+def _collect_min_hits_signal(result: dict[str, Any]) -> tuple[list[str], list[str]]:
+    """Extract the FTS min-hits partial reason + applied limit, if any.
+
+    ``run_keyword_pipeline`` records ``fts_min_hits_excluded`` (count of
+    candidates the segmented-query min-hits post-filter dropped and that no
+    fallback recovered) and ``fts_min_hits_required`` (the required distinct
+    token hits) in ``performance``. Exclusions the fallback fully recovered are
+    not recorded there, so a recovered exclusion never double-reports a gap.
+    """
+    perf = result.get("performance") or {}
+    excluded = int(perf.get("fts_min_hits_excluded", 0) or 0)
+    if excluded <= 0:
+        return [], []
+    required = perf.get("fts_min_hits_required")
+    applied = [f"fts_min_hits:{required}"] if required is not None else []
+    return [REASON_THRESHOLD_EXCLUDED], applied
+
+
 def _collect_index_freshness_signal(result: dict[str, Any]) -> list[str]:
     """Extract the index-not-fresh reason for an un-refreshed stale index.
 
@@ -129,7 +155,10 @@ def _collect_index_freshness_signal(result: dict[str, Any]) -> list[str]:
         return []
     warnings = result.get("warnings") or []
     has_stale = any(str(w).startswith("index_stale:") for w in warnings)
-    has_failed_update = any(str(w).startswith("pending_index_update_failed:") for w in warnings)
+    has_failed_update = any(
+        str(w).startswith(("pending_index_update_failed:", "index_update_failed:"))
+        for w in warnings
+    )
     return [REASON_INDEX_NOT_FRESH] if (has_stale or has_failed_update) else []
 
 
@@ -157,6 +186,10 @@ def collect_coverage_signals(result: dict[str, Any]) -> tuple[list[str], list[st
     reasons.extend(thr_reasons)
     applied.extend(thr_applied)
 
+    min_hits_reasons, min_hits_applied = _collect_min_hits_signal(result)
+    reasons.extend(min_hits_reasons)
+    applied.extend(min_hits_applied)
+
     reasons.extend(_collect_index_freshness_signal(result))
 
     cap_reasons, cap_applied = _collect_source_cap_signal(result)
@@ -178,17 +211,20 @@ def build_coverage_for_result(
     (``total_matches``); ``returned``/``offset`` describe the window this
     particular response carries (full set for ``limit=0``, a slice otherwise).
 
-    ``presentation_limit`` is the CLI ``limit`` in effect. A binding cap (limit >
-    0 that actually left admitted candidates out of this window) is recorded as a
-    ``result_limit:<n>`` closed-set entry in ``limits_applied`` — but only when it
-    actually excluded candidates (``returned < observed_total``).
+    ``presentation_limit`` is the CLI ``limit`` in effect. A binding cap is
+    recorded as a ``result_limit:<n>`` closed-set entry in ``limits_applied`` —
+    but ONLY when the limit truly bound the result window, i.e. the window would
+    have carried more admitted candidates without it (``offset + limit <
+    observed_total``). A final page whose shortfall comes from the OFFSET alone
+    (``offset + limit >= observed_total``) records no ``result_limit``: the
+    offset, not the limit, bounded that window.
     """
     observed_total = int(result.get("total_matches", 0) or 0)
     reasons, applied = collect_coverage_signals(result)
     if (
         presentation_limit is not None
         and int(presentation_limit) > 0
-        and int(returned) < observed_total
+        and (offset + int(presentation_limit)) < observed_total
     ):
         applied.append(f"result_limit:{int(presentation_limit)}")
     return build_retrieval_coverage(
