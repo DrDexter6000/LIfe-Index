@@ -239,20 +239,22 @@ def test_aggregate_counts_and_buckets_invariant_under_coverage_projection(
 
     journals_dir = isolated_data_dir / "Journals" / "2026" / "03"
     journals_dir.mkdir(parents=True, exist_ok=True)
+    # Days 1-2 carry the "Fixture note" body substring; days 3-4 deliberately
+    # do not, so term_presence can discriminate matched from excluded entries.
     fixture = {
-        1: "topic: [work]",
-        2: "topic: [work]",
-        3: "topic: [life]",
-        4: "",
+        1: ("topic: [work]", "Fixture note"),
+        2: ("topic: [work]", "Fixture note"),
+        3: ("topic: [life]", "Different note"),
+        4: ("", "Different note"),
     }
-    for day, topic_line in fixture.items():
+    for day, (topic_line, body_phrase) in fixture.items():
         (journals_dir / f"life-index_2026-03-{day:02d}_001.md").write_text(
             "---\n"
             f"date: 2026-03-{day:02d}\n"
             f"{topic_line}\n"
             "---\n\n"
             "# note\n\n"
-            f"Fixture note {day}.\n",
+            f"{body_phrase} {day}.\n",
             encoding="utf-8",
         )
 
