@@ -141,18 +141,35 @@ def _facet_values(
     return values
 
 
-def _collect_entries(date_from: str | None, date_to: str | None) -> list[IndexBEntry]:
+def _collect_entries_with_scan(
+    date_from: str | None, date_to: str | None
+) -> tuple[list[IndexBEntry], dict[str, Any]]:
+    """Collect scoped entries plus this scan's own enumeration facts.
+
+    The returned ``entries`` list is identical to :func:`_collect_entries`; the
+    second element reports the collection facts that the ``exhaustive`` flag and
+    the unified ``retrieval_coverage.v1`` object are projected from:
+
+    * ``scanned``: the directory walk ran to completion;
+    * ``skipped``: one record per candidate silently skipped by the guards
+      (``not_a_regular_file`` / ``relative_path_unresolvable`` /
+      ``unexpected_path_depth``).
+    """
     data_dir = get_user_data_dir()
     journals_dir = get_journals_dir()
     entries: list[IndexBEntry] = []
+    skipped: list[dict[str, str]] = []
     for path in sorted(journals_dir.glob("*/*/life-index_*.md")):
         if not path.is_file():
+            skipped.append(_skip_record(path, journals_dir, "not_a_regular_file"))
             continue
         rel = safe_relative_path(path, data_dir)
         if not rel:
+            skipped.append(_skip_record(path, journals_dir, "relative_path_unresolvable"))
             continue
         parts = path.relative_to(journals_dir).parts
         if len(parts) < 3:
+            skipped.append(_skip_record(path, journals_dir, "unexpected_path_depth"))
             continue
         year, month = parts[0], parts[1]
         metadata = _parse_frontmatter(path)
@@ -167,6 +184,19 @@ def _collect_entries(date_from: str | None, date_to: str | None) -> list[IndexBE
         )
         if _entry_in_range(entry, date_from, date_to):
             entries.append(entry)
+    return entries, {"scanned": True, "skipped": skipped}
+
+
+def _skip_record(path: Path, journals_dir: Path, reason: str) -> dict[str, str]:
+    try:
+        rel = path.relative_to(journals_dir).as_posix()
+    except ValueError:
+        rel = path.name
+    return {"path": rel, "reason": reason}
+
+
+def _collect_entries(date_from: str | None, date_to: str | None) -> list[IndexBEntry]:
+    entries, _scan_facts = _collect_entries_with_scan(date_from, date_to)
     return entries
 
 

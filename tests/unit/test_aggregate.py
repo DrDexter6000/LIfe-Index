@@ -508,6 +508,16 @@ class TestClaimEnvelopeAndEvidencePack:
         assert ep["page_info"]["cursor"] is None
         assert ep["page_info"]["cursor_hint"] is None
 
+        # Phase 2B: aggregate must prove its own enumeration completeness via
+        # the unified retrieval_coverage.v1 vocabulary (additive).
+        cov = ep["retrieval_coverage"]
+        assert cov["schema_version"] == "retrieval_coverage.v1"
+        assert cov["status"] == "complete"
+        assert cov["observed_total"] == cov["returned"] == len(ep["items"])
+        assert cov["next_offset"] is None
+        assert cov["partial_reasons"] == []
+        assert cov["limits_applied"] == []
+
     def test_term_presence_measurable_approximate(self, sandbox: Path):
         journals_dir = sandbox / "Journals"
         _write_journal(journals_dir, "2026-03-14", "今天又晚睡了")
@@ -646,6 +656,15 @@ class TestEntityPresenceClaimEvidenceShape:
             assert item["index_node_ref"]["type"] == "month"
         assert ep["page_info"]["has_more"] is False
 
+        # Phase 2B: coverage authority present alongside page_info (additive).
+        cov = ep["retrieval_coverage"]
+        assert cov["schema_version"] == "retrieval_coverage.v1"
+        assert cov["status"] == "complete"
+        assert cov["observed_total"] == cov["returned"] == len(ep["items"])
+        assert cov["next_offset"] is None
+        assert cov["partial_reasons"] == []
+        assert cov["limits_applied"] == []
+
 
 class TestScanJournalsExcludesRevisions:
     """M03: _scan_journals must exclude files under .revisions directories."""
@@ -739,6 +758,15 @@ class TestEmptyAggregateClaimEvidenceShape:
         assert ep["items"] == []
         assert ep["page_info"]["has_more"] is False
         assert ep["page_info"]["cursor"] is None
+
+        # Phase 2B: an empty scan is a trivially complete enumeration.
+        cov = ep["retrieval_coverage"]
+        assert cov["schema_version"] == "retrieval_coverage.v1"
+        assert cov["status"] == "complete"
+        assert cov["observed_total"] == cov["returned"] == 0
+        assert cov["next_offset"] is None
+        assert cov["partial_reasons"] == []
+        assert cov["limits_applied"] == []
 
     def test_empty_term_presence_claim_envelope(self, sandbox: Path):
         result = run_aggregate(
