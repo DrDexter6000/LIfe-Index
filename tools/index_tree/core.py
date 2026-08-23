@@ -295,7 +295,7 @@ def _enumeration_coverage(
     ]
     scanned = bool(scan_facts.get("scanned", True))
     exhaustive = scanned and not exhaustive_reasons
-    retrieval_coverage = {
+    retrieval_coverage: dict[str, Any] = {
         "schema_version": RETRIEVAL_COVERAGE_SCHEMA_VERSION,
         "status": "complete" if exhaustive else "partial",
         "observed_total": len(scoped_entries),

@@ -96,9 +96,7 @@ def build_retrieval_coverage_from_scan(
     if mode != "fallback_full_scan" and not months_consistent:
         partial_reasons.append("index_not_fresh")
 
-    is_complete = (
-        mode == "fallback_full_scan" or months_consistent
-    ) and unparseable_count == 0
+    is_complete = (mode == "fallback_full_scan" or months_consistent) and unparseable_count == 0
 
     return {
         "schema_version": RETRIEVAL_COVERAGE_SCHEMA_VERSION,
