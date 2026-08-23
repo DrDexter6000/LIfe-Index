@@ -104,18 +104,87 @@ def _parse_predicate(predicate_str: str) -> Dict[str, Any]:
     return result
 
 
-def _scan_journals(journals_dir: Path, since: date, until: date) -> List[Dict[str, Any]]:
+def _range_month_keys(since: date, until: date) -> set:
+    keys: set = set()
+    d = since
+    while d <= until:
+        keys.add(f"{d.year}-{d.month:02d}")
+        if d.month == 12:
+            d = date(d.year + 1, 1, 1)
+        else:
+            d = date(d.year, d.month + 1, 1)
+    return keys
+
+
+def _existing_month_dirs_in_range(journals_dir: Path, since: date, until: date) -> set:
+    """Cheap month-directory census: which YYYY-MM dirs exist inside the range.
+
+    Read-only on directory NAMES only; never touches journal file contents.
+    """
+    existing: set = set()
+    if not journals_dir.is_dir():
+        return existing
+    range_keys = _range_month_keys(since, until)
+    for child in journals_dir.iterdir():
+        if not child.is_dir() or not re.fullmatch(r"\d{4}", child.name):
+            continue
+        for sub in child.iterdir():
+            if not sub.is_dir() or not re.fullmatch(r"\d{2}", sub.name):
+                continue
+            key = f"{child.name}-{sub.name}"
+            if key in range_keys:
+                existing.add(key)
+    return existing
+
+
+def _new_scan_stats(mode: str) -> Dict[str, Any]:
+    return {
+        "mode": mode,
+        "visited_months": set(),
+        "existing_range_months": set(),
+        "months_consistent": True,
+        "candidate_count": 0,
+        "unparseable_count": 0,
+    }
+
+
+def _scan_journals(
+    journals_dir: Path, since: date, until: date
+) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    """Enumerate candidate journals and record the enumeration facts verbatim.
+
+    Returns ``(entries, scan_stats)``. ``scan_stats`` carries this run's own
+    enumeration facts for the ``retrieval_coverage.v1`` projection:
+
+    * ``mode``: ``"fallback_full_scan"`` (whole-tree rglob) or ``"month_refs"``
+      (per-month glob over navigation refs);
+    * ``visited_months``: months whose directories were actually globbed;
+    * ``existing_range_months``: month directories present on disk within range;
+    * ``candidate_count``: candidate paths observed (parsed + unparseable;
+      excludes ``.revisions`` policy skips and out-of-range files);
+    * ``unparseable_count``: candidates that failed to parse.
+    """
     entries: List[Dict[str, Any]] = []
+    stats = _new_scan_stats("month_refs")
     if not journals_dir.exists():
-        return entries
+        return entries, stats
+
+    def _consume(md_file: Path) -> None:
+        entry, outcome = _parse_journal_file(md_file, since, until, journals_dir)
+        if outcome == "policy_skip":
+            return
+        stats["candidate_count"] += 1
+        if outcome == "unparseable":
+            stats["unparseable_count"] += 1
+        elif entry is not None:
+            entries.append(entry)
 
     month_refs = _nav_index_node_refs_for_range(since.isoformat(), until.isoformat())
     if not month_refs:
+        stats["mode"] = "fallback_full_scan"
         for md_file in sorted(journals_dir.rglob("life-index_*.md")):
-            entry = _parse_journal_file(md_file, since, until, journals_dir)
-            if entry is not None:
-                entries.append(entry)
-        return entries
+            _consume(md_file)
+        return entries, stats
 
     for ref in month_refs:
         month_dir = _nav_resolve_month_dir_from_ref(journals_dir, ref)
@@ -123,25 +192,36 @@ def _scan_journals(journals_dir: Path, since: date, until: date) -> List[Dict[st
             continue
         if not month_dir.is_dir():
             continue
+        rel_parts = month_dir.relative_to(journals_dir).parts
+        if len(rel_parts) == 2:
+            stats["visited_months"].add(f"{rel_parts[0]}-{rel_parts[1]}")
         for md_file in sorted(month_dir.glob("life-index_*.md")):
-            entry = _parse_journal_file(md_file, since, until, journals_dir)
-            if entry is not None:
-                entries.append(entry)
+            _consume(md_file)
 
-    return entries
+    stats["existing_range_months"] = _existing_month_dirs_in_range(journals_dir, since, until)
+    stats["months_consistent"] = stats["visited_months"] == stats["existing_range_months"]
+
+    return entries, stats
 
 
 def _parse_journal_file(
     md_file: Path, since: date, until: date, journals_dir: Path
-) -> Optional[Dict[str, Any]]:
+) -> Tuple[Optional[Dict[str, Any]], str]:
+    """Parse one journal file into ``(entry, outcome)`` without behavior change.
+
+    ``outcome`` classifies why an entry was or was not produced, so coverage can
+    separate genuine parse failures from established policy skips and scope
+    filtering: ``"parsed"`` | ``"out_of_range"`` | ``"unparseable"`` |
+    ``"policy_skip"``.
+    """
     rel_parts = md_file.parts
     if any(part == ".revisions" for part in rel_parts):
-        return None
+        return None, "policy_skip"
 
     try:
         content = md_file.read_text(encoding="utf-8")
     except (IOError, OSError):
-        return None
+        return None, "unparseable"
 
     metadata, body = parse_frontmatter(content)
 
@@ -157,9 +237,9 @@ def _parse_journal_file(
                 if iso_match.group(2):
                     entry_time = iso_match.group(2)
             except ValueError:
-                return None
+                return None, "unparseable"
         else:
-            return None
+            return None, "unparseable"
 
     if entry_time is None:
         time_val = metadata.get("time", "")
@@ -187,12 +267,12 @@ def _parse_journal_file(
             try:
                 entry_date = date.fromisoformat(stem_match.group(1))
             except ValueError:
-                return None
+                return None, "unparseable"
         else:
-            return None
+            return None, "unparseable"
 
     if entry_date < since or entry_date > until:
-        return None
+        return None, "out_of_range"
 
     try:
         data_dir = get_user_data_dir()
@@ -200,13 +280,16 @@ def _parse_journal_file(
     except ValueError:
         rel_path = md_file.as_posix()
 
-    return {
-        "path": rel_path,
-        "date": entry_date,
-        "time": entry_time,
-        "body": body,
-        "metadata": metadata,
-    }
+    return (
+        {
+            "path": rel_path,
+            "date": entry_date,
+            "time": entry_time,
+            "body": body,
+            "metadata": metadata,
+        },
+        "parsed",
+    )
 
 
 def _bucket_key(entry_date: date, unit: str) -> str:
@@ -346,7 +429,7 @@ def run_aggregate(
         }
 
     journals_dir = get_journals_dir()
-    entries = _scan_journals(journals_dir, since, until)
+    entries, scan_stats = _scan_journals(journals_dir, since, until)
 
     metric = _compute_metric(pred)
     pred_type = pred["type"]
@@ -524,6 +607,15 @@ def run_aggregate(
     if explain and pred.get("definition"):
         limitations = [pred["definition"]] + limitations
 
+    # Parse-failure candidates are disclosed through the existing limitations
+    # channel; no new closed-set partial reason is introduced for them.
+    unparseable_count = int(scan_stats.get("unparseable_count", 0))
+    if unparseable_count > 0:
+        limitations.append(
+            f"{unparseable_count} journal file(s) failed to parse and were "
+            "excluded from this aggregation."
+        )
+
     entry_dates: Dict[str, str] = {}
     bucket_by_path: Dict[str, str] = {}
     for entry in entries:
@@ -565,13 +657,20 @@ def run_aggregate(
         "performance": {"total_time_ms": round(elapsed_ms, 1)},
     }
 
-    from .claim_envelope import build_claim_envelope, build_evidence_pack
+    from .claim_envelope import (
+        build_claim_envelope,
+        build_evidence_pack,
+        build_retrieval_coverage_from_scan,
+    )
 
     result["claim_envelope"] = build_claim_envelope(result)
     result["evidence_pack"] = build_evidence_pack(
         aggregate_result=result,
         entry_dates=entry_dates,
         bucket_by_path=bucket_by_path,
+        retrieval_coverage=build_retrieval_coverage_from_scan(
+            scan_stats, returned=len(entry_dates)
+        ),
     )
 
     return result

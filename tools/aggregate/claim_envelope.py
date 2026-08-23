@@ -13,6 +13,7 @@ from ..generate_index.navigation import (
 
 CLAIM_SCHEMA_VERSION = "m02a.claim_envelope.v0"
 EVIDENCE_SCHEMA_VERSION = "m02a.aggregate_evidence_pack.v0"
+RETRIEVAL_COVERAGE_SCHEMA_VERSION = "retrieval_coverage.v1"
 
 
 def claim_type_from_exactness(exactness: str) -> str:
@@ -64,11 +65,56 @@ def build_claim_envelope(aggregate_result: Dict[str, Any]) -> Dict[str, Any]:
     return envelope
 
 
+def build_retrieval_coverage_from_scan(
+    scan_stats: Dict[str, Any], *, returned: int
+) -> Dict[str, Any]:
+    """Project aggregate's OWN enumeration facts onto ``retrieval_coverage.v1``.
+
+    Aggregate is the coverage authority for its own scan; nothing here changes
+    which files participate in the aggregation. Rules:
+
+    * ``status="complete"`` iff the scan was a fallback full-tree sweep, or the
+      month directories actually visited match a cheap directory-listing census
+      of month dirs within range — AND no candidate failed to parse;
+    * otherwise ``status="partial"``; ``partial_reasons`` only carries closed-set
+      codes (month-census mismatch → ``"index_not_fresh"``). Parse-failure
+      candidates are disclosed via the existing ``limitations`` channel and are
+      NOT given a new closed-set reason code;
+    * ``observed_total`` counts candidate paths observed this run (a lower bound
+      when partial); ``returned`` is the number of evidence items actually
+      carried;
+    * ``next_offset`` is always null and ``page_info.has_more`` stays false:
+      aggregate has no pagination;
+    * ``limits_applied`` lists only limits that truly excluded candidates.
+    """
+    mode = str(scan_stats.get("mode", "month_refs"))
+    months_consistent = bool(scan_stats.get("months_consistent", True))
+    unparseable_count = int(scan_stats.get("unparseable_count", 0))
+    observed_total = int(scan_stats.get("candidate_count", 0))
+
+    partial_reasons: List[str] = []
+    if mode != "fallback_full_scan" and not months_consistent:
+        partial_reasons.append("index_not_fresh")
+
+    is_complete = (mode == "fallback_full_scan" or months_consistent) and unparseable_count == 0
+
+    return {
+        "schema_version": RETRIEVAL_COVERAGE_SCHEMA_VERSION,
+        "status": "complete" if is_complete else "partial",
+        "observed_total": observed_total,
+        "returned": int(returned),
+        "next_offset": None,
+        "partial_reasons": partial_reasons,
+        "limits_applied": [],
+    }
+
+
 def build_evidence_pack(
     *,
     aggregate_result: Dict[str, Any],
     entry_dates: Dict[str, str],
     bucket_by_path: Dict[str, str],
+    retrieval_coverage: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Build an evidence pack from aggregate result metadata."""
     matched = set(aggregate_result.get("matched_entries", []))
@@ -117,7 +163,7 @@ def build_evidence_pack(
     if since and until:
         scope_refs = _nav_index_node_refs_for_range(since, until)
 
-    return {
+    pack: Dict[str, Any] = {
         "schema_version": EVIDENCE_SCHEMA_VERSION,
         "source_command": "aggregate",
         "query": aggregate_result.get("query", ""),
@@ -129,9 +175,12 @@ def build_evidence_pack(
             "refs": scope_refs,
             "note": "navigation anchors only; evidence items remain authoritative",
         },
-        "page_info": {
-            "has_more": False,
-            "cursor": None,
-            "cursor_hint": None,
-        },
     }
+    if retrieval_coverage is not None:
+        pack["retrieval_coverage"] = retrieval_coverage
+    pack["page_info"] = {
+        "has_more": False,
+        "cursor": None,
+        "cursor_hint": None,
+    }
+    return pack

@@ -1621,6 +1621,13 @@ lookup key 使用 trim、空白折叠和 `casefold()`，但 canonical 输出保�
 `canonicalization.diagnostics` 中报告。图谱缺失或加载失败不会阻断导航；加载失败时
 规范化降级为 no-op 并输出诊断。
 
+自 Phase 2B 起，顶层 `exhaustive` 由枚举事实推导而非硬编码 `true`：范围扫描完整执行
+且未跳过任何候选时为 `true`；否则为 `false`，并在原生 `exhaustive_reasons` 数组中逐项
+列出被跳过候选的 `{path, reason}`。同一响应还携带同语汇的 `retrieval_coverage`
+（`retrieval_coverage.v1`）对象：`complete`/`partial` 与 `exhaustive` 一致，
+`observed_total` 与 `returned` 均等于进入响应的范围条目数，`next_offset` 恒为 `null`
+（无分页）。
+
 ```json
 {
   "success": true,
@@ -1636,6 +1643,7 @@ lookup key 使用 trim、空白折叠和 `casefold()`，但 canonical 输出保�
     "operation_model": "deterministic_navigation.v1",
     "selection_contract": "host_agent_selects_values; tool_executes_only",
     "exhaustive": true,
+    "exhaustive_reasons": [],
     "facets": {
       "location": {
         "facet": "location",
@@ -1658,6 +1666,15 @@ lookup key 使用 trim、空白折叠和 `casefold()`，但 canonical 输出保�
       "diagnostics": []
     },
     "coverage": {"candidate_count": 2, "facet_count": 1},
+    "retrieval_coverage": {
+      "schema_version": "retrieval_coverage.v1",
+      "status": "complete",
+      "observed_total": 2,
+      "returned": 2,
+      "next_offset": null,
+      "partial_reasons": [],
+      "limits_applied": []
+    },
     "navigation_docs": [".life-index/index-b/INDEX.md"],
     "extension_points": ["entity_neighbors"]
   },
@@ -1692,9 +1709,18 @@ journal 候选，`entry_pointers` 可为空；调用方可用返回的实体邻�
 本次范围涉及的 `navigation_docs`；刷新失败时可返回 journal fallback source。返回的
 `entry_pointers` 是候选 journal 路径，调用方仍需用 `journal batch-get` 或 `journal get`
 读取 journal 内容后才能引用为事实证据。
-对于干净的 facet 计数或枚举问题，`count`、`entries` 和 `entry_pointers` 是穷尽候选源；
-调用方应仅读取支撑答案所需的有界 journal 条目（例如边界日期、代表条目或用于消除日期
-缺口歧义的条目），不应在成功穷尽导航后默认重启宽泛搜索。
+与 `discover` 相同，顶层 `exhaustive` 自 Phase 2B 起由枚举事实推导而非硬编码 `true`：
+枚举完整执行且无跳过候选才为 `true`，否则为 `false` 并在原生 `exhaustive_reasons`
+数组中逐项列出跳过项的 `{path, reason}`；同响应携带同语汇的 `retrieval_coverage`
+对象（`complete`/`partial` 与 `exhaustive` 一致；`observed_total`=`returned`=进入响应
+的范围条目数；`next_offset` 恒为 `null`）。注意区分：`entity_neighbors[]` 内每个操作
+自带的 `exhaustive` 描述的是该次实体图遍历是否因 limit 截断，与本响应级枚举穷尽性是
+两个不同字段。
+对于干净的 facet 计数或枚举问题，当响应级 `exhaustive` 为 `true`（即
+`retrieval_coverage.status` 为 `"complete"`）时，`count`、`entries` 和 `entry_pointers`
+是穷尽候选源；调用方应仅读取支撑答案所需的有界 journal 条目（例如边界日期、代表条目
+或用于消除日期缺口歧义的条目），不应在成功穷尽导航后默认重启宽泛搜索；
+`exhaustive=false` 时应先核对 `exhaustive_reasons` 再决定下一步。
 
 ```json
 {
@@ -1731,6 +1757,7 @@ journal 候选，`entry_pointers` 可为空；调用方可用返回的实体邻�
     ],
     "implemented_extensions": ["entity_neighbors"],
     "exhaustive": true,
+    "exhaustive_reasons": [],
     "count": 1,
     "entry_pointers": ["Journals/2026/03/life-index_2026-03-14_001.md"],
     "entries": [
@@ -1794,6 +1821,15 @@ journal 候选，`entry_pointers` 可为空；调用方可用返回的实体邻�
       "facet_filter_count": 2,
       "entity_neighbor_operation_count": 1,
       "entity_neighbor_supporting_journal_count": 1
+    },
+    "retrieval_coverage": {
+      "schema_version": "retrieval_coverage.v1",
+      "status": "complete",
+      "observed_total": 2,
+      "returned": 2,
+      "next_offset": null,
+      "partial_reasons": [],
+      "limits_applied": []
     },
     "fallback": {"used": false, "reason": null},
     "extension_points": ["entity_neighbors"]
@@ -2815,7 +2851,7 @@ python -m tools.search_journals [options]
 
 ### `retrieval_coverage` Authority (`retrieval_coverage.v1`)
 
-`retrieval_coverage` is the single authority for retrieval completeness as of Phase 1; the legacy `total_found` / `total_matches` / `total_available` / `has_more` fields are projections derived from it so they cannot drift (`total_matches`/`total_available` = `observed_total`; `total_found` = `returned`; `has_more` = `next_offset is not None`).
+`retrieval_coverage` is the single authority for retrieval completeness as of Phase 1; the legacy `total_found` / `total_matches` / `total_available` / `has_more` fields are projections derived from it so they cannot drift (`total_matches`/`total_available` = `observed_total`; `total_found` = `returned`; `has_more` = `next_offset is not None`). As of Phase 2B, `aggregate` (projected at `evidence_pack.retrieval_coverage`) and `index-tree` `discover`/`navigate` responses also carry a `retrieval_coverage.v1` object projected under this same authority vocabulary.
 
 Shape:
 
@@ -4741,7 +4777,10 @@ aggregate 专用 `evidence_pack` 是 deterministic source map，不是 smart-sea
 | `predicate` | object | 解析后的谓词 |
 | `items` | array | 证据项列表 |
 | `index_scope` | object | 月度 Index Tree 导航锚点范围，见下方 `index_scope` 子节 |
+| `retrieval_coverage` | object | Phase 2B 起 additive：`retrieval_coverage.v1` 完整性权威对象，位于 evidence pack 内；投影规则见下 |
 | `page_info` | object | 最小未来钩子，当前固定 `has_more=false`, `cursor=null`, `cursor_hint=null` |
+
+Phase 2B 起的投影规则：`status="complete"` 当且仅当（本次扫描为全树回退扫描，或导航索引月份目录与范围内实际存在的月份目录一致）**且**无可解析失败候选；否则为 `"partial"`，`partial_reasons` 仅使用闭集码（月份核对不一致 → `index_not_fresh`），可解析失败候选经既有 `limitations` 通道披露计数、不新造闭集码。`observed_total` 为本次观察到的候选路径数（`partial` 时为下界）；`returned` 为本次携带的 evidence 条数；`next_offset` 恒为 `null`。D2 注记：`page_info.has_more` 恒为 `false` 属真实性修复——aggregate 无分页，`has_more` 是 `next_offset` 的投影。
 
 `items[]` 字段：
 

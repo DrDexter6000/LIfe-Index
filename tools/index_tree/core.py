@@ -20,13 +20,14 @@ from tools.index_tree.materialize import (
     FACETS,
     INDEX_B_DIR,
     build_ensure_payload,
-    _collect_entries,
+    _collect_entries_with_scan,
     _facet_values,
     _raw_facet_values,
     _parse_month,
 )
 
 SCHEMA_VERSION = "m31.index_tree.v1"
+RETRIEVAL_COVERAGE_SCHEMA_VERSION = "retrieval_coverage.v1"
 CONTENT_TERM_FACET = "content_term"
 CONTENT_TERM_MAX_VALUES = 5000
 CONTENT_TERM_STOPWORDS = {
@@ -272,6 +273,40 @@ def _baseline_paths_by_scan(query: str, nodes: list[dict[str, Any]]) -> list[str
     return matches
 
 
+def _enumeration_coverage(
+    scoped_entries: list[Any], scan_facts: dict[str, Any]
+) -> tuple[bool, list[dict[str, str]], dict[str, Any]]:
+    """Derive ``exhaustive`` plus the unified coverage object from collection facts.
+
+    Index-tree's coverage authority is the enumeration performed by
+    ``_collect_entries_with_scan`` itself. The scan is exhaustive when it ran to
+    completion and skipped no candidate; otherwise ``exhaustive`` is False and
+    each skip is disclosed in ``exhaustive_reasons`` (the native disclosure
+    channel — no new closed-set ``partial_reasons`` code is invented). The
+    returned ``retrieval_coverage.v1`` object describes this enumeration:
+    ``observed_total``/``returned`` both count the scoped candidates carried into
+    the response, ``next_offset`` is always null (no pagination), and
+    ``limits_applied`` lists only limits that truly excluded candidates.
+    """
+    exhaustive_reasons = [
+        {"path": str(item.get("path", "")), "reason": str(item.get("reason", ""))}
+        for item in scan_facts.get("skipped", [])
+        if isinstance(item, dict)
+    ]
+    scanned = bool(scan_facts.get("scanned", True))
+    exhaustive = scanned and not exhaustive_reasons
+    retrieval_coverage: dict[str, Any] = {
+        "schema_version": RETRIEVAL_COVERAGE_SCHEMA_VERSION,
+        "status": "complete" if exhaustive else "partial",
+        "observed_total": len(scoped_entries),
+        "returned": len(scoped_entries),
+        "next_offset": None,
+        "partial_reasons": [],
+        "limits_applied": [],
+    }
+    return exhaustive, exhaustive_reasons, retrieval_coverage
+
+
 def _facet_specs_by_name() -> dict[str, Any]:
     return {spec.name: spec for spec in FACETS}
 
@@ -456,7 +491,10 @@ def build_discover_payload(
             {"date_from": date_from, "date_to": date_to},
         )
 
-    scoped_entries = _collect_entries(start, end)
+    scoped_entries, scan_facts = _collect_entries_with_scan(start, end)
+    exhaustive, exhaustive_reasons, retrieval_coverage = _enumeration_coverage(
+        scoped_entries, scan_facts
+    )
     canonicalizer = load_facet_canonicalizer(get_user_data_dir())
     source = ensured.get("source") if isinstance(ensured, dict) else None
     if source not in ("index-b", "journals"):
@@ -471,7 +509,8 @@ def build_discover_payload(
         "date_to": end,
         "operation_model": "deterministic_navigation.v1",
         "selection_contract": "host_agent_selects_values; tool_executes_only",
-        "exhaustive": True,
+        "exhaustive": exhaustive,
+        "exhaustive_reasons": exhaustive_reasons,
         "facets": {
             facet: _facet_menu(scoped_entries, facet, canonicalizer) for facet in selected_facets
         },
@@ -483,6 +522,7 @@ def build_discover_payload(
             "candidate_count": len(scoped_entries),
             "facet_count": len(selected_facets),
         },
+        "retrieval_coverage": retrieval_coverage,
         "freshness": (
             ensured.get("freshness") or ensured.get("freshness_before")
             if isinstance(ensured, dict)
@@ -712,7 +752,10 @@ def build_navigate_payload(
             {"date_from": date_from, "date_to": date_to},
         )
 
-    scoped_entries = _collect_entries(start, end)
+    scoped_entries, scan_facts = _collect_entries_with_scan(start, end)
+    exhaustive, exhaustive_reasons, retrieval_coverage = _enumeration_coverage(
+        scoped_entries, scan_facts
+    )
     canonicalizer = load_facet_canonicalizer(get_user_data_dir())
     facet_ops = _facet_operations(operations)
     entity_ops = _entity_neighbor_operations(operations)
@@ -744,7 +787,8 @@ def build_navigate_payload(
         "operation_model": "deterministic_navigation.v1",
         "operations": operations,
         "implemented_extensions": ["entity_neighbors"],
-        "exhaustive": True,
+        "exhaustive": exhaustive,
+        "exhaustive_reasons": exhaustive_reasons,
         "count": len(matched_entries),
         "entry_pointers": [entry.rel_path for entry in matched_entries],
         "entries": [_entry_payload(entry, facet_ops, canonicalizer) for entry in matched_entries],
@@ -761,6 +805,7 @@ def build_navigate_payload(
             "entity_neighbor_operation_count": len(entity_ops),
             "entity_neighbor_supporting_journal_count": len(supporting_journal_ids),
         },
+        "retrieval_coverage": retrieval_coverage,
         "freshness": (
             ensured.get("freshness") or ensured.get("freshness_before")
             if isinstance(ensured, dict)
