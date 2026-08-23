@@ -1171,11 +1171,16 @@ def test_q_docs_state_min_relevance_zero_recall_first_intent() -> None:
         )
 
 
-def test_q_child_failed_is_not_an_emittable_partial_reason() -> None:
-    """The unreachable ``child_failed`` reason is removed from the public contract.
+def test_q_child_failed_is_a_closed_vocabulary_reason_with_real_path() -> None:
+    """``child_failed`` is the fifth closed reason and has a real emission path.
 
-    No code path can emit it in Phase 1, so it must not appear in the public
-    partial-reason vocabulary (module constants or documented enum).
+    Revision 4 closes the ``partial_reasons`` vocabulary at exactly
+    ``unread_page``, ``source_cap``, ``threshold_excluded``, ``child_failed``,
+    ``index_not_fresh``. Phase 2A makes ``child_failed`` reachable (a search
+    child failure envelope, or a missing/invalid child coverage authority that
+    can never prove completeness), centralized in ``coverage.py`` and
+    documented. No other reason (e.g. an invented
+    ``coverage_authority_missing``) may be published.
     """
     import tools.search_journals.coverage as coverage_module
 
@@ -1184,11 +1189,27 @@ def test_q_child_failed_is_not_an_emittable_partial_reason() -> None:
         for name, value in vars(coverage_module).items()
         if name.startswith("REASON_") and isinstance(value, str)
     }
-    assert "child_failed" not in emitted_reasons
+    assert coverage_module.REASON_CHILD_FAILED == "child_failed"
+    assert emitted_reasons == {
+        "unread_page",
+        "source_cap",
+        "threshold_excluded",
+        "child_failed",
+        "index_not_fresh",
+    }
 
     api_text = (Path(__file__).resolve().parents[2] / "docs" / "API.md").read_text(encoding="utf-8")
-    assert "child_failed" not in api_text, (
-        "the documented partial_reasons vocabulary must not advertise an " "unreachable reason"
+    assert "child_failed" in api_text, (
+        "the documented partial_reasons vocabulary must advertise the reachable "
+        "child_failed reason"
+    )
+    assert "coverage_authority_missing" not in api_text, (
+        "no invented partial_reasons entry may be published; a missing child "
+        "coverage authority fails closed via child_failed"
+    )
+    assert 'has_more = (status == "partial")' not in api_text, (
+        "has_more must only mean a mechanical next page (next_offset is not "
+        "None), never partial status"
     )
 
 

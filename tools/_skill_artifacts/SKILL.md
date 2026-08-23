@@ -156,6 +156,8 @@ Do not use `recall`, broad grep, or full-directory reads for new playbooks.
 
 **retrieval_coverage.v1 消费规则（机械执行）**：
 - `smart-search` 的 `filtered_results` 只是有界发现 scaffold，不是完整性权威；答案依赖“全部/计数/枚举”时，必须回到 `search` 的 `retrieval_coverage.v1` 做完整性判定。
+- `smart-search` 响应自带顶层 `retrieval_coverage.v1`（Phase 2A 起为 additive 公开契约）：它是该响应窗口完整性的唯一权威，`filtered_results` 只是 ≤15 条的有界窗口，永远不得当作用户全部人生记录。
+- `smart-search` 的 `next_offset` 为非空整数时，用同一 query + 公开 `--offset` 参数续页（确定性 query/filter/date 语义自动保持），按稳定 journal `rel_path` 去重累计，直到 `next_offset` 为 null；`partial_reasons`（如 `child_failed`）非空时必须如实向用户披露，不得把安全部分结果当作全集。`has_more` 只表示存在机械下一页，不表示 partial 状态——完整性只以 `retrieval_coverage.status` / `partial_reasons` 判定。
 - 需要全集时，优先用同一确定性 query/filter/level/min_relevance 调 `search --limit 0`；若走分页，每次只把 `offset` 改为当前返回的 `next_offset`，按稳定 journal `rel_path` 去重累计，直到 `next_offset` 为 null 才停止。cursor 的存在或任何单独一页都不等于完整。
 - `min_relevance=0` 是 `search` 内部固定的 recall-first 默认值，不是 Host 可传的 CLI flag；Host 不得尝试 `--min-relevance`，复跑或分页时也不传任何 relevance 阈值参数——机械流程中的“同一 min_relevance”由该内部默认自动保持。
 - 只有 `status=complete` 才能声称该次响应携带完整 admitted set；最终仍为 `partial` 时，必须用自然语言向用户披露 `partial_reasons` 与 `limits_applied`，不得静默称“全部”。

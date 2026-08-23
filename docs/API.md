@@ -3009,6 +3009,7 @@ L3 Invocation-Time Hints，提供与本次调用相关的局部提示。**不变
 | `answer` | object | no | 当前产品 CLI 不输出；语言合成属于 Host Agent + Life Index Skill |
 | `evidence_pack` | object | no | Additive: retrieval evidence (requires `--include-evidence`) |
 | `aggregate_result` | object | no | Additive: deterministic aggregate output when aggregate intent detected |
+| `retrieval_coverage` | object | yes (`deterministic_scaffold` path) | Additive (Phase 2A): `retrieval_coverage.v1` completeness authority scoped to THIS response window; absent on the `deterministic_aggregate` short-circuit |
 | `events` | array | no | Piggyback event notifications |
 
 #### Field Semantics
@@ -3029,6 +3030,14 @@ L3 Invocation-Time Hints，提供与本次调用相关的局部提示。**不变
 - `performance`: non-stable; sub-fields may expand. Consumers should tolerate unknown keys.
 - `answer.*`: not emitted by the product CLI; consumers synthesize from returned evidence in the Host Agent.
 - `aggregate_result`: computed by `tools.aggregate.core.run_aggregate`; LLM never computes counts.
+- `retrieval_coverage` (Phase 2A): the additive completeness authority for this
+  smart-search response. `filtered_results` is a bounded window of at most 15
+  candidates (`ORCHESTRATOR_MAX_CANDIDATES`) — never treat it as the user's
+  whole journal record set. `status` is `complete` **iff** this one response
+  carries the whole admitted set with no remainder (`returned == observed_total`,
+  `next_offset` null, empty `partial_reasons` / `limits_applied`); anything else
+  is honestly `partial` with ≥1 reason. Full shape and continuation semantics:
+  see **Honest Coverage & Continuation (Phase 2A)** below.
 
 #### Error Behavior / Error Codes
 
@@ -3066,6 +3075,7 @@ python -m tools.smart_search --query "..." [options]
 | include-evidence | flag | ❌ | false | 在输出中包含 evidence pack |
 | format-entity-annotated | flag | ❌ | false | 与 `--include-evidence` 同用时，增加人类可读的 `formatted_evidence` |
 | synthesize | flag | ❌ | false | 至少保留两个主版本；不注入 LLM、不添加 `answer`、不改变 domain payload，并在 stderr 发出一次稳定弃用警告；见命名 transition block |
+| offset | int | ❌ | 0 | 公开 continuation 参数：传入上一响应 `retrieval_coverage.next_offset` 获取下一窗口；必须 ≥ 0，非法值以 argparse 错误退出（code 2）。未传递时调用形状与既有契约逐字节一致 |
 
 ### 返回值
 
@@ -3106,6 +3116,15 @@ python -m tools.smart_search --query "..." [options]
     "strategy": "keyword_only",
     "fallback_decision": false
   },
+  "retrieval_coverage": {
+    "schema_version": "retrieval_coverage.v1",
+    "status": "complete",
+    "observed_total": 3,
+    "returned": 3,
+    "next_offset": null,
+    "partial_reasons": [],
+    "limits_applied": []
+  },
   "performance": {
     "total_time_ms": 142.5,
     "rewrite_time_ms": 0,
@@ -3132,11 +3151,29 @@ python -m tools.smart_search --query "..." [options]
 | `agent_instructions` | object | 给调用 Agent 的消费规则：只基于返回证据回答，不得外部补证 |
 | `answer_scaffold` | object | 给调用 Agent 的答案结构建议与引用政策 |
 | `query_plan` | object | 查询分解、检索策略与 fallback 判定 |
+| `retrieval_coverage` | object | Additive（Phase 2A）：本响应窗口的 `retrieval_coverage.v1` 完整性权威；`deterministic_aggregate` 短路路径不携带 |
 | `performance` | object | 性能指标（详见下方 `performance` 子字段表） |
 
 #### `--explain` 输出变化
 
 当传递 `--explain` 时，`agent_decisions_summary`（string）被替换为兼容性字段 `agent_decisions`（list[dict]）。当前工具内不拥有 LLM 决策阶段，因此该数组为空；确定性执行来源记录位于 evidence/planner 元数据。未传递 `--explain` 时，输出包含当前为 `"0 decisions made"` 的 `agent_decisions_summary`，不含 `agent_decisions`。
+
+#### Honest Coverage & Continuation（Phase 2A）
+
+`smart-search` 在 `deterministic_scaffold` 路径上始终输出顶层 `retrieval_coverage`（`retrieval_coverage.v1`），它是本响应窗口完整性的**唯一权威**。字段结构与 `search` 的 `retrieval_coverage` Authority 一节完全相同（`schema_version` / `status` / `observed_total` / `returned` / `next_offset` / `partial_reasons` / `limits_applied`）；区别仅在语义范围：
+
+- **窗口语义**：`filtered_results` 交付的是同一确定性 ranked list 的 `[offset, offset+15)` 窗口（15 = `ORCHESTRATOR_MAX_CANDIDATES`）。`observed_total` 是 admitted set 全量大小（单查询为 search child 的 `observed_total`；多查询为融合去重后的唯一候选数——任一 child 不完整时它是观察下界）。窗口被截断时 `partial_reasons` 必含 `unread_page`，`limits_applied` 记录 `result_limit:15`（仅当窗口、而非 offset，真正约束了本响应）。
+- **child 权威消费**：每个 search child 的 `retrieval_coverage.v1` 是唯一完整性输入。任一 child `partial`（无论其 legacy `has_more` / `total_*` 投影是否看起来完整、fused unique 是否 < 15），父级即 `partial` 并继承该 child 的 `partial_reasons` / `limits_applied`。全部 child `complete` 且融合唯一候选 ≤ 15 时父级才是 `complete`。
+- **`partial_reasons` 封闭词表（Revision 4）**：smart-search 层与检索层共用同一封闭词表，集中在 `tools/search_journals/coverage.py`，共五个词条：`unread_page` / `source_cap` / `threshold_excluded` / `child_failed` / `index_not_fresh`。不发明、不发布其它词条。
+  - `child_failed` — 任一 search child 返回失败 envelope，**或** child 响应没有/带有无效的 `retrieval_coverage.v1` 权威对象（旧 mock / 旧调用方兼容输入）。两种情况都无法证明完整性：响应保留已有安全结果（不伪造 success+complete），fail closed 为 `partial`，并发出**安全 warning**（失败 envelope 为 `subquery_failed: N sub-quer(y|ies) returned failure envelopes; ...`；权威缺失为 `subquery_coverage_missing: N sub-quer(y|ies) returned no valid retrieval_coverage.v1; ...`），这些 warning 只携带计数，不含子查询文本或任何用户内容。legacy `has_more` / `total_*` 只是兼容投影，`has_more=true` 或 `total > 已观察` 时额外记 `unread_page`。
+- **Continuation（机械可执行）**：`next_offset` 是非空整数时，用同一 query（确定性 query/filter/date 语义不变）+ 公开 continuation 参数取下一页：
+  - Python 入口：`SmartSearchOrchestrator().search(query, offset=next_offset)`
+  - CLI 入口：`life-index smart-search --query "..." --offset <next_offset>`
+  - 页间按稳定 journal `rel_path` 去重累计，直到 `next_offset` 为 null。最终页（非零 offset）仍是 `partial`（`unread_page`）——它不携带全集，只有累计后的消费方才能宣称看全。`status=complete` 的单响应才自带完整性证明。
+  - 工具不持有 snapshot/cursor/session 状态：语料在页间变化时每页按当前 admitted set 重算并保持诚实。offset 传给声明了显式 `offset` 参数的检索后端；生产后端（`hierarchical_search`）返回全量 admitted set，窗口由 smart-search 层本地应用。多查询 continuation 不向 child 转发 offset——融合排序在本地开窗是唯一无重复/无遗漏且无需持久 authority 的方式。
+  - 融合排序对同分（equal `rrf_score`）候选以稳定 journal identity（`rel_path`/`path`/`title`）作次序键，排序不依赖 child 迭代顺序，页边界可重复执行。
+- **兼容投影同源（Revision 4）**：`total_matches` / `total_available` / `total_found` / `has_more`（含 `evidence_pack.has_more` 与内部 raw envelope）全部由 `project_legacy_from_coverage(retrieval_coverage)` 投影：`total_matches = total_available = observed_total`，`total_found = returned`，**`has_more` 仅表示存在机械下一页（`next_offset is not None`）**，不表示 partial 状态。不可续页的 `partial`（如 `child_failed`、权威缺失）诚实地 `has_more=false`；完整性只由 `retrieval_coverage.status` / `partial_reasons` 判定，`has_more=false` 与 `status=partial` 并存不矛盾。
+- `deterministic_aggregate` 短路路径不执行检索、不携带 `retrieval_coverage`；其完整性契约由 `aggregate` 自身负责。
 
 #### `performance` 子字段
 
@@ -3169,6 +3206,7 @@ python -m tools.smart_search --query "..." [options]
 | `evidence_pack` | 按需 | 按需 | **stable** |
 | `formatted_evidence` | 可展示 | 可展示 | **stable additive** — 仅 `--include-evidence --format-entity-annotated` 时出现 |
 | `aggregate_result` | aggregate/count/bucketed-frequency queries | count/bucket/claim display | **stable additive** - deterministic `aggregate` result; LLM never computes counts |
+| `retrieval_coverage` | 完整性判定与 `--offset` 续页的唯一权威；`partial` 时必须向用户披露 `partial_reasons` / `limits_applied` | 可展示完整性状态 | **stable additive**（Phase 2A）— `deterministic_scaffold` 路径始终存在 |
 | `evidence_pack.items[].entity_matches` | 按需 | 按需 | **stable**，实体匹配溯源；消费者应容忍缺失字段 |
 | `rewritten_query` | 不需要 | 不需要 | **internal** — 检索查询诊断，消费者应使用 `query` |
 | `agent_unavailable` | 不需要 | 不需要 | **internal** — 诊断信号，UI 应从 `answer`/`summary` 存在性推断 |
@@ -3224,7 +3262,7 @@ python -m tools.smart_search --query "..." [options]
 | `evidence_pack.items` | array | 检索证据项列表，每项含 `document`（文档引用）、`scores`（评分明细）、`snippet`（片段）、`entity_matches`（实体匹配溯源，仅匹配时出现） |
 | `evidence_pack.semantic_candidates` | array | Deprecated legacy 字段；当前恒为空列表 |
 | `evidence_pack.total_available` | int | 与 `performance.total_available` 一致；多子查询时为已观察到的唯一候选数下界 |
-| `evidence_pack.has_more` | bool | 已观察唯一候选超过交付上限，或任一子查询报告更多结果/失败而使集合不完整时为 `true` |
+| `evidence_pack.has_more` | bool | 仅表示存在机械下一页（由 `retrieval_coverage` 投影，`has_more = next_offset is not None`）。不可续页的 partial（如 `child_failed`）诚实地为 `false`；完整性只由 `retrieval_coverage.status` / `partial_reasons` 判定 |
 | `evidence_pack.no_confident_match` | bool | **检索层级信号**：底层搜索管道是否未找到高置信度匹配。这是检索质量指标，不是答案质量信号。调用方不应将其等同于 `answer.confidence` 的判断依据 |
 | `evidence_pack.diagnostics` | object | **确定性检索诊断**。不依赖 LLM，从已有搜索结果字段推导。详见下方 Diagnostics 子节 |
 | `evidence_pack.schema_version` | string | 证据包 schema 版本。当前为 `"1.0.0"`。旧 payload 反序列化时默认 `"1.0.0"` |

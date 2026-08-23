@@ -507,6 +507,147 @@ class TestCombinedFlags:
 # CLI --explain shape
 
 
+# Phase 2A: top-level retrieval_coverage + public continuation parameter
+
+
+class TestRetrievalCoverageContract:
+    """Phase 2A: smart-search carries a top-level retrieval_coverage authority."""
+
+    @patch(
+        "tools.search_journals.orchestrator._get_search_fn",
+        return_value=_mock_hierarchical_search,
+    )
+    def test_default_output_carries_top_level_retrieval_coverage(self, _mock):
+        orch = SmartSearchOrchestrator()
+        result = orch.search("test query")
+
+        coverage = result["retrieval_coverage"]
+        assert coverage["schema_version"] == "retrieval_coverage.v1"
+        assert coverage["status"] in {"complete", "partial"}
+        assert isinstance(coverage["observed_total"], int)
+        assert isinstance(coverage["returned"], int)
+        assert coverage["next_offset"] is None or isinstance(coverage["next_offset"], int)
+        assert isinstance(coverage["partial_reasons"], list)
+        assert isinstance(coverage["limits_applied"], list)
+
+    @patch(
+        "tools.search_journals.orchestrator._get_search_fn",
+        return_value=_mock_hierarchical_search,
+    )
+    def test_coverage_is_additive_to_stable_fields(self, _mock):
+        """retrieval_coverage is added without replacing any stable field."""
+        orch = SmartSearchOrchestrator()
+        result = orch.search("test query")
+
+        for field in (
+            "success",
+            "query",
+            "rewritten_query",
+            "filtered_results",
+            "summary",
+            "citations",
+            "agent_unavailable",
+            "performance",
+            "smart_search_mode",
+            "agent_instructions",
+            "answer_scaffold",
+            "query_plan",
+        ):
+            assert field in result, f"Missing stable field: {field}"
+        assert "retrieval_coverage" in result
+        # No compatibility totals leak to the smart-search top level.
+        assert "total_found" not in result
+
+    @patch(
+        "tools.search_journals.orchestrator._get_search_fn",
+        return_value=_mock_hierarchical_search,
+    )
+    def test_legacy_projection_input_degrades_conservatively_to_partial(self, _mock):
+        """A child without coverage authority can never prove completeness.
+
+        Revision 4 closed vocabulary: the fail-closed reason is the existing
+        ``child_failed`` — no invented reason (e.g. coverage_authority_missing)
+        is published.
+        """
+        orch = SmartSearchOrchestrator()
+        result = orch.search("test query")
+
+        coverage = result["retrieval_coverage"]
+        assert coverage["status"] == "partial"
+        assert "child_failed" in coverage["partial_reasons"]
+        assert all(
+            reason
+            in {
+                "unread_page",
+                "source_cap",
+                "threshold_excluded",
+                "child_failed",
+                "index_not_fresh",
+            }
+            for reason in coverage["partial_reasons"]
+        )
+
+
+class TestContinuationOffsetCliContract:
+    """--offset is the public CLI continuation parameter."""
+
+    def _run_cli(self, argv):
+        from io import StringIO
+
+        captured = StringIO()
+        with patch("sys.argv", ["smart-search", *argv]):
+            with patch("tools.search_journals.orchestrator.SmartSearchOrchestrator") as MockCls:
+                mock_orch = MagicMock()
+                mock_orch.search.return_value = {
+                    "success": True,
+                    "query": "test",
+                    "rewritten_query": "test",
+                    "filtered_results": [],
+                    "summary": "",
+                    "citations": [],
+                    "agent_decisions": [],
+                    "agent_unavailable": True,
+                    "performance": {"total_time_ms": 10},
+                }
+                MockCls.return_value = mock_orch
+                with patch(
+                    "builtins.print",
+                    side_effect=lambda *a, **kw: captured.write(str(a[0])) if a else None,
+                ):
+                    from tools.smart_search.__main__ import main
+
+                    try:
+                        main()
+                    except SystemExit as exc:
+                        exit_code = exc.code
+                    else:
+                        exit_code = 0
+        return mock_orch, exit_code
+
+    def test_offset_flag_forwarded_to_public_search_entry(self):
+        mock_orch, exit_code = self._run_cli(["--query", "test", "--offset", "15"])
+        assert exit_code == 0
+        assert mock_orch.search.call_args.kwargs.get("offset") == 15
+
+    def test_no_offset_keeps_documented_call_shape(self):
+        """Without --offset the CLI call shape stays byte-compatible."""
+        mock_orch, exit_code = self._run_cli(["--query", "test"])
+        assert exit_code == 0
+        assert mock_orch.search.call_args.kwargs.get("offset") is None
+        assert mock_orch.search.call_args.kwargs.get("include_evidence") is False
+        assert mock_orch.search.call_args.kwargs.get("synthesize") is False
+
+    def test_negative_offset_is_rejected(self):
+        mock_orch, exit_code = self._run_cli(["--query", "test", "--offset", "-1"])
+        assert exit_code == 2
+        mock_orch.search.assert_not_called()
+
+    def test_non_integer_offset_is_rejected(self):
+        mock_orch, exit_code = self._run_cli(["--query", "test", "--offset", "abc"])
+        assert exit_code == 2
+        mock_orch.search.assert_not_called()
+
+
 class TestExplainFlag:
     """Verify --explain output shape at CLI level."""
 
