@@ -4,14 +4,34 @@ from __future__ import annotations
 
 import importlib
 import json
+import os
+import shutil
 import subprocess
 import sys
 import tomllib
 import zipfile
 from pathlib import Path
+from shutil import ignore_patterns
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 PACKAGED_SKILL_ROOT = REPO_ROOT / "tools" / "_skill_artifacts"
+
+# Wheel build inputs snapshotted into the per-test tmp dir. Building the live
+# checkout in place would drop build/ and *.egg-info into the working tree and
+# couple the build to whatever state earlier suite phases left behind.
+BUILD_INPUT_FILES = (
+    "pyproject.toml",
+    "MANIFEST.in",
+    "README.md",
+    "SKILL.md",
+    "bootstrap-manifest.json",
+)
+
+# pip spawns an isolated build env on every invocation; under a fully loaded
+# gate machine that leg alone can exceed short timeouts, while the suite
+# grants this test 300s via pytest-timeout. Keep child budget aligned below
+# that ceiling so pytest-timeout remains the outer bound.
+WHEEL_BUILD_TIMEOUT_SECONDS = 240
 
 
 def _root_manifest() -> dict[str, object]:
@@ -72,23 +92,41 @@ def test_packaged_skill_artifacts_match_root_skill_sources() -> None:
         ).read_bytes()
 
 
+def _snapshot_build_root(tmp_path: Path) -> Path:
+    """Materialize a byte-faithful copy of the wheel build inputs."""
+    snapshot = tmp_path / "repo"
+    snapshot.mkdir()
+    for name in BUILD_INPUT_FILES:
+        shutil.copy2(REPO_ROOT / name, snapshot / name)
+    shutil.copytree(
+        REPO_ROOT / "tools",
+        snapshot / "tools",
+        ignore=ignore_patterns("__pycache__", "*.pyc"),
+    )
+    return snapshot
+
+
 def test_built_wheel_contains_packaged_skill_artifacts(tmp_path: Path) -> None:
     """PyPI wheels must carry sync-skill artifacts in an importable package path."""
+    build_root = _snapshot_build_root(tmp_path)
+    env = dict(os.environ, PIP_DISABLE_PIP_VERSION_CHECK="1")
     result = subprocess.run(
         [
             sys.executable,
             "-m",
             "pip",
             "wheel",
-            str(REPO_ROOT),
+            str(build_root),
             "--no-deps",
             "--wheel-dir",
             str(tmp_path),
         ],
         capture_output=True,
         text=True,
-        timeout=120,
+        timeout=WHEEL_BUILD_TIMEOUT_SECONDS,
         encoding="utf-8",
+        cwd=str(tmp_path),
+        env=env,
     )
     assert result.returncode == 0, result.stderr
     wheel = next(tmp_path.glob("life_index-*.whl"))
