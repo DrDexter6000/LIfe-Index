@@ -55,6 +55,7 @@ def _plan_via_cli(data_dir: Path, src: Path) -> dict[str, Any]:
         [sys.executable, "-m", "tools", "import", "plan",
          "--source", "media.photo_timeline", "--input", str(src), "--json"],
         capture_output=True, text=True, env=env, timeout=120,
+        encoding="utf-8",
     )
     assert res.returncode == 0, res.stderr
     return json.loads(res.stdout)["data"]

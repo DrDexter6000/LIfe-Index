@@ -19,6 +19,7 @@ def test_no_unmanaged_numeric_literals():
         capture_output=True,
         text=True,
         cwd=str(REPO_ROOT),
+        encoding="utf-8",
     )
     assert result.returncode == 0, f"Lint found violations:\n{result.stdout}\n{result.stderr}"
 

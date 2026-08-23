@@ -335,6 +335,7 @@ class E2ETestRunner:
                 cwd=str(self.project_root),
                 env=self._build_env(),
                 timeout=30,
+                encoding="utf-8",
             )
 
             if result.returncode != 0:
@@ -421,6 +422,7 @@ class E2ETestRunner:
                 cwd=str(self.project_root),
                 env=self._build_env(),
                 timeout=30,
+                encoding="utf-8",
             )
 
             if result.returncode != 0:
@@ -459,6 +461,7 @@ class E2ETestRunner:
                 cwd=str(self.project_root),
                 env=self._build_env(),
                 timeout=30,
+                encoding="utf-8",
             )
 
             if result.returncode != 0:
@@ -499,6 +502,7 @@ class E2ETestRunner:
                 cwd=str(self.project_root),
                 env=self._build_env(),
                 timeout=30,
+                encoding="utf-8",
             )
 
             if result.returncode != 0:

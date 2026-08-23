@@ -43,6 +43,7 @@ def _run_smart_search(
         text=True,
         cwd=str(REPO_ROOT),
         env=env,
+        encoding="utf-8",
     )
     try:
         stdout, stderr = proc.communicate(timeout=timeout)
@@ -360,6 +361,7 @@ class TestSeededEntityMatchContract:
             cwd=str(REPO_ROOT),
             env=env,
             timeout=60,
+            encoding="utf-8",
         )
         assert build_proc.returncode == 0, f"build_index failed: stderr={build_proc.stderr}"
         yield data_dir
@@ -579,6 +581,7 @@ class TestFormatEntityAnnotatedContract:
             cwd=str(REPO_ROOT),
             env=env,
             timeout=60,
+            encoding="utf-8",
         )
         assert build_proc.returncode == 0, f"build_index failed: stderr={build_proc.stderr}"
         yield data_dir
@@ -697,6 +700,7 @@ class TestPhase2AContinuationContract:
             cwd=str(REPO_ROOT),
             env=env,
             timeout=120,
+            encoding="utf-8",
         )
         assert (
             build_proc.returncode == 0
@@ -819,6 +823,7 @@ class TestCaseInsensitiveSeededEntityMatchContract:
             cwd=str(REPO_ROOT),
             env=env,
             timeout=60,
+            encoding="utf-8",
         )
         assert (
             build_proc.returncode == 0

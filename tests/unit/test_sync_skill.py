@@ -267,6 +267,7 @@ def test_sync_skill_cli_uses_host_skill_dir_env(tmp_path: Path, monkeypatch) -> 
         capture_output=True,
         text=True,
         timeout=30,
+        encoding="utf-8",
     )
 
     assert result.returncode == 0, result.stderr
@@ -301,6 +302,7 @@ def test_sync_skill_cli_install_host_home(tmp_path: Path) -> None:
         capture_output=True,
         text=True,
         timeout=30,
+        encoding="utf-8",
     )
 
     assert result.returncode == 0, result.stderr
@@ -352,6 +354,7 @@ triggers:
         capture_output=True,
         text=True,
         timeout=30,
+        encoding="utf-8",
     )
 
     assert result.returncode == 0, result.stderr
@@ -394,6 +397,7 @@ def test_sync_skill_cli_install_host_skill_dir_parent_normalizes_to_canonical_sl
         capture_output=True,
         text=True,
         timeout=30,
+        encoding="utf-8",
     )
 
     assert result.returncode == 0, result.stderr
@@ -432,6 +436,7 @@ def test_sync_skill_cli_install_env_parent_recovers_missing_canonical_from_manag
         capture_output=True,
         text=True,
         timeout=30,
+        encoding="utf-8",
     )
 
     assert result.returncode == 0, result.stderr
@@ -477,6 +482,7 @@ def test_sync_skill_cli_install_default_home_recovers_missing_canonical_from_man
         text=True,
         timeout=30,
         env=env,
+        encoding="utf-8",
     )
 
     assert result.returncode == 0, result.stderr
@@ -521,6 +527,7 @@ def test_sync_skill_cli_install_default_home_does_not_guess_unmanaged_parent_str
         text=True,
         timeout=30,
         env=env,
+        encoding="utf-8",
     )
 
     assert result.returncode == 0, result.stderr
@@ -559,6 +566,7 @@ def test_sync_skill_cli_non_install_env_parent_missing_canonical_does_not_create
         capture_output=True,
         text=True,
         timeout=30,
+        encoding="utf-8",
     )
 
     assert result.returncode == 0, result.stderr
@@ -639,6 +647,7 @@ def test_sync_skill_install_recovers_managed_parent_stray_artifacts(
         capture_output=True,
         text=True,
         timeout=30,
+        encoding="utf-8",
     )
 
     assert result.returncode == 0, result.stderr
@@ -681,6 +690,7 @@ def test_sync_skill_install_preserves_unmanaged_parent_stray_artifacts(
         capture_output=True,
         text=True,
         timeout=30,
+        encoding="utf-8",
     )
 
     assert result.returncode == 0, result.stderr
@@ -806,6 +816,7 @@ triggers:
         capture_output=True,
         text=True,
         timeout=30,
+        encoding="utf-8",
     )
 
     assert result.returncode == 0, result.stderr
@@ -912,6 +923,7 @@ triggers:
         text=True,
         timeout=30,
         env=env,
+        encoding="utf-8",
     )
 
     assert result.returncode == 0, result.stderr
@@ -965,6 +977,7 @@ def test_sync_skill_cli_install_refuses_autoconverge_for_unmanaged_nested_conten
         text=True,
         timeout=30,
         env=env,
+        encoding="utf-8",
     )
 
     assert result.returncode == 0, result.stderr
@@ -1006,6 +1019,7 @@ def test_sync_skill_reports_playbook_unchanged_with_changelog_pointer(
         capture_output=True,
         text=True,
         timeout=30,
+        encoding="utf-8",
     )
 
     assert result.returncode == 0, result.stderr
@@ -1035,6 +1049,7 @@ def test_sync_skill_cli_uninstall_host_home_roundtrip(tmp_path: Path) -> None:
         capture_output=True,
         text=True,
         timeout=30,
+        encoding="utf-8",
     )
     assert install.returncode == 0, install.stderr
     assert (target / "SKILL.md").exists()
@@ -1053,6 +1068,7 @@ def test_sync_skill_cli_uninstall_host_home_roundtrip(tmp_path: Path) -> None:
         capture_output=True,
         text=True,
         timeout=30,
+        encoding="utf-8",
     )
 
     assert uninstall.returncode == 0, uninstall.stderr
@@ -1086,6 +1102,7 @@ def test_sync_skill_cli_list_is_read_only_across_default_host_homes(
         text=True,
         timeout=30,
         env=env,
+        encoding="utf-8",
     )
 
     assert result.returncode == 0, result.stderr
@@ -1114,6 +1131,7 @@ def test_sync_skill_cli_uninstall_without_explicit_target_is_refused(tmp_path: P
         text=True,
         timeout=30,
         env=env,
+        encoding="utf-8",
     )
 
     assert result.returncode == 1
@@ -1141,6 +1159,7 @@ def test_sync_skill_cli_conflicting_actions_are_refused(tmp_path: Path) -> None:
         capture_output=True,
         text=True,
         timeout=30,
+        encoding="utf-8",
     )
 
     assert result.returncode == 1
@@ -1223,6 +1242,7 @@ def test_sync_skill_cli_loudly_reports_undelivered_when_no_host_dir(
         text=True,
         timeout=30,
         env=env,
+        encoding="utf-8",
     )
 
     assert result.returncode == 0, result.stderr

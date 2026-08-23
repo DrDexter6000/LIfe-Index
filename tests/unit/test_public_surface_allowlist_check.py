@@ -138,6 +138,7 @@ def test_cli_paths_file_exits_nonzero_for_disallowed_and_zero_for_clean(tmp_path
         capture_output=True,
         text=True,
         check=False,
+        encoding="utf-8",
     )
     clean = subprocess.run(
         [
@@ -152,6 +153,7 @@ def test_cli_paths_file_exits_nonzero_for_disallowed_and_zero_for_clean(tmp_path
         capture_output=True,
         text=True,
         check=False,
+        encoding="utf-8",
     )
 
     assert dirty.returncode == 1

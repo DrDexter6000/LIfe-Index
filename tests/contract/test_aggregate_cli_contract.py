@@ -55,6 +55,7 @@ class TestAggregateCliContract:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
 
         assert result.returncode == 0, f"stderr: {result.stderr}"
@@ -83,6 +84,7 @@ class TestAggregateCliContract:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
 
         payload = json.loads(result.stdout)
@@ -114,6 +116,7 @@ class TestAggregateCliContract:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
 
         files_after = set(journals_dir.rglob("*"))
@@ -139,6 +142,7 @@ class TestAggregateCliContract:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
 
         assert result.returncode != 0
@@ -165,6 +169,7 @@ class TestAggregateCliContract:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
 
         assert result.returncode == 0, f"stderr: {result.stderr}"
@@ -202,6 +207,7 @@ class TestAggregateCliContract:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
 
         assert result.returncode == 0, f"stderr: {result.stderr}"
@@ -240,6 +246,7 @@ class TestAggregateCliContract:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
 
         assert result.returncode != 0
@@ -278,6 +285,7 @@ class TestFieldEqualsCliContract:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
 
         assert result.returncode == 0, f"stderr: {result.stderr}"
@@ -310,6 +318,7 @@ class TestFieldEqualsCliContract:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
 
         assert result.returncode != 0

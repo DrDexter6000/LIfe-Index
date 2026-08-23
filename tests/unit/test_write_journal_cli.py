@@ -99,6 +99,7 @@ def _run_confirm(
         capture_output=True,
         text=True,
         timeout=30,
+        encoding="utf-8",
     )
 
 
@@ -229,6 +230,7 @@ def test_unified_confirm_updates_existing_journal_in_place(tmp_path: Path) -> No
         capture_output=True,
         text=True,
         timeout=30,
+        encoding="utf-8",
     )
 
     after_invocation = _tree_snapshot(data_dir)
@@ -297,6 +299,7 @@ def test_unified_confirm_invalid_argv_is_zero_write(tmp_path: Path, args: list[s
         capture_output=True,
         text=True,
         timeout=30,
+        encoding="utf-8",
     )
 
     assert result.returncode != 0
@@ -327,6 +330,7 @@ def test_unified_confirm_nonexistent_journal_is_zero_write(tmp_path: Path) -> No
         capture_output=True,
         text=True,
         timeout=30,
+        encoding="utf-8",
     )
 
     after = _tree_snapshot(data_dir)

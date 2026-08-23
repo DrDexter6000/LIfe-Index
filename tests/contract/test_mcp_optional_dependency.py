@@ -44,6 +44,7 @@ def _run_blocked(env: dict[str, str], *args: str) -> subprocess.CompletedProcess
         capture_output=True,
         text=True,
         timeout=45,
+        encoding="utf-8",
     )
 
 

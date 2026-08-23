@@ -192,7 +192,7 @@ class TestHealthCheck:
 
         repo = tmp_path / "checkout"
         repo.mkdir()
-        subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True, text=True)
+        subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True, text=True, encoding="utf-8")
         (repo / "friction.md").write_text("agent note in the wrong place\n", encoding="utf-8")
 
         dirty = main_cli._detect_local_git_freshness(repo)

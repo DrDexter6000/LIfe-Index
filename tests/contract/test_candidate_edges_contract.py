@@ -130,6 +130,7 @@ class TestCandidateEdgesContract:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
         payload = json.loads(result.stdout)
@@ -152,6 +153,7 @@ class TestCandidateEdgesContract:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
         payload = json.loads(result.stdout)
         required = {"type", "source", "target", "evidence_paths", "confidence", "suggested_action"}
@@ -174,6 +176,7 @@ class TestCandidateEdgesContract:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
         payload = json.loads(result.stdout)
         for candidate in payload["candidates"]:
@@ -199,6 +202,7 @@ class TestCandidateEdgesContract:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
         payload = json.loads(result.stdout)
         for candidate in payload["candidates"]:
@@ -221,6 +225,7 @@ class TestCandidateEdgesContract:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
         payload = json.loads(result.stdout)
         valid_actions = {
@@ -257,6 +262,7 @@ class TestCandidateEdgesContract:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
 
@@ -281,6 +287,7 @@ class TestCandidateEdgesContract:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
         payload = json.loads(result.stdout)
         keys = []
@@ -304,6 +311,7 @@ class TestCandidateEdgesContract:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
         payload = json.loads(result.stdout)
         types = {c["type"] for c in payload["candidates"]}
@@ -327,6 +335,7 @@ class TestCandidateEdgesContract:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
         payload = json.loads(result.stdout)
         types = {c["type"] for c in payload["candidates"]}
@@ -350,6 +359,7 @@ class TestCandidateEdgesContract:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
         payload = json.loads(result.stdout)
         types = {c["type"] for c in payload["candidates"]}
@@ -373,6 +383,7 @@ class TestCandidateEdgesContract:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
         payload = json.loads(result.stdout)
         valid_types = {
@@ -445,6 +456,7 @@ class TestCandidateEdgesContract:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
         payload = json.loads(result.stdout)
         assert "schema_version" in payload, "Missing schema_version in output"

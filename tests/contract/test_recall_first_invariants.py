@@ -82,6 +82,7 @@ def _run_search(data_dir: Path, query: str, *extra_args: str) -> dict:
         text=True,
         timeout=30,
         check=False,
+        encoding="utf-8",
     )
     assert proc.returncode == 0, (
         "search failed: "

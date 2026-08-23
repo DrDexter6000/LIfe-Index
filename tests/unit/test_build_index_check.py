@@ -197,6 +197,7 @@ class TestCheckIndexCLI:
             cwd=Path(__file__).resolve().parent.parent.parent,
             env={**__import__("os").environ, "LIFE_INDEX_DATA_DIR": str(fresh_data_dir)},
             timeout=15,
+            encoding="utf-8",
         )
         # CLI should succeed (exit 0 for healthy)
         assert result.returncode == 0

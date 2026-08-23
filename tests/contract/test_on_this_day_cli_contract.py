@@ -102,6 +102,7 @@ class TestOnThisDayCliContract:
             text=True,
             env=env,
             timeout=60,
+            encoding="utf-8",
         )
 
         assert result.returncode == 0, (
@@ -191,6 +192,7 @@ class TestOnThisDayCliContract:
             text=True,
             env=env,
             timeout=60,
+            encoding="utf-8",
         )
 
         assert result.returncode == 0, (
@@ -223,6 +225,7 @@ class TestOnThisDayCliContract:
             text=True,
             env=env,
             timeout=60,
+            encoding="utf-8",
         )
 
         assert result.returncode != 0, (
@@ -255,6 +258,7 @@ class TestOnThisDayCliContract:
             text=True,
             env=env,
             timeout=60,
+            encoding="utf-8",
         )
 
         files_after = set(journals_dir.rglob("*"))
@@ -330,6 +334,7 @@ class TestOnThisDayCliContract:
             text=True,
             env=env,
             timeout=60,
+            encoding="utf-8",
         )
 
         assert result.returncode == 0, (
@@ -366,6 +371,7 @@ class TestOnThisDayCliContract:
             text=True,
             env=env,
             timeout=60,
+            encoding="utf-8",
         )
 
         assert result.returncode != 0, (
@@ -399,6 +405,7 @@ class TestOnThisDayCliContract:
             text=True,
             env=env,
             timeout=60,
+            encoding="utf-8",
         )
 
         assert result.returncode != 0, (

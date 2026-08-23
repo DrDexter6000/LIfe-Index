@@ -162,6 +162,7 @@ def _make_directory_link(link: Path, target: Path) -> None:
                 check=False,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
             )
             if completed.returncode == 0:
                 return

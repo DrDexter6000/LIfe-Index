@@ -58,6 +58,7 @@ sys.meta_path.insert(0, BlockForbidden())
         text=True,
         check=False,
         timeout=30,
+        encoding="utf-8",
     )
 
 

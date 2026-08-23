@@ -220,6 +220,12 @@ def export_review_xlsx(
 
     wb = Workbook()
     ws = wb.active
+    if ws is None:
+        return {
+            "success": False,
+            "data": None,
+            "error": "Workbook has no active worksheet.",
+        }
     ws.title = "Review Queue"
 
     # Headers

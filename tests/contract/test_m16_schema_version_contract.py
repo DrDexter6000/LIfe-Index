@@ -76,6 +76,7 @@ class TestSearchSchemaVersion:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
         assert result.returncode == 0, (
             f"Expected exit 0, got {result.returncode}\n"
@@ -108,6 +109,7 @@ class TestSmartSearchSchemaVersion:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
         assert result.returncode == 0, (
             f"Expected exit 0, got {result.returncode}\n"
@@ -145,6 +147,7 @@ class TestAggregateSchemaVersion:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
         payload = json.loads(result.stdout)
@@ -175,6 +178,7 @@ class TestAggregateSchemaVersion:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
         payload = json.loads(result.stdout)
@@ -206,6 +210,7 @@ class TestAggregateSchemaVersion:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
         assert result.returncode != 0
         payload = json.loads(result.stdout)
@@ -233,6 +238,7 @@ class TestEntitySchemaVersion:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
         payload = json.loads(result.stdout)
         assert payload["success"] is True
@@ -256,6 +262,7 @@ class TestEntitySchemaVersion:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
         payload = json.loads(result.stdout)
         assert payload["success"] is True
@@ -284,6 +291,7 @@ class TestTimelineSchemaVersion:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
         assert result.returncode == 0, (
             f"Expected exit 0, got {result.returncode}\n"
@@ -318,6 +326,7 @@ class TestTimelineSchemaVersion:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
         payload = json.loads(result.stdout)
         # Error payloads should still carry schema_version for consistency
@@ -347,6 +356,7 @@ class TestHealthSchemaVersion:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
         payload = json.loads(result.stdout)
         assert payload["success"] is True
@@ -374,6 +384,7 @@ class TestHealthSchemaVersion:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
         payload = json.loads(result.stdout)
         assert payload["success"] is True
@@ -407,6 +418,7 @@ class TestGenerateIndexSchemaVersionBlocked:
             text=True,
             env=env,
             timeout=30,
+            encoding="utf-8",
         )
         payload = json.loads(result.stdout)
         assert isinstance(payload, list), (

@@ -119,6 +119,7 @@ def _invoke(data_dir: Path, *args: str) -> subprocess.CompletedProcess[str]:
         text=True,
         env=env,
         timeout=30,
+        encoding="utf-8",
     )
 
 
@@ -134,6 +135,7 @@ def _invoke_with_env(
         text=True,
         env=env,
         timeout=30,
+        encoding="utf-8",
     )
 
 
@@ -601,6 +603,7 @@ def test_main_help_includes_index_tree() -> None:
         capture_output=True,
         text=True,
         timeout=30,
+        encoding="utf-8",
     )
 
     assert result.returncode == 0

@@ -12,6 +12,7 @@ def test_upgrade_help_is_text_and_does_not_emit_json() -> None:
         capture_output=True,
         text=True,
         timeout=30,
+        encoding="utf-8",
     )
 
     assert result.returncode == 0

@@ -73,6 +73,7 @@ def test_index_tree_help_marks_legacy_subcommands_debug_only() -> None:
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        encoding="utf-8",
     )
     help_text = result.stdout
 

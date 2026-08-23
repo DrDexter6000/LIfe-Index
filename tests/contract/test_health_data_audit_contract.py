@@ -44,6 +44,7 @@ def _run_data_audit(env: dict[str, str]) -> subprocess.CompletedProcess[str]:
         text=True,
         env=env,
         timeout=30,
+        encoding="utf-8",
     )
 
 

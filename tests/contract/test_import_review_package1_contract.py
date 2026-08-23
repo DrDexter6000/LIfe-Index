@@ -45,6 +45,7 @@ def _run_import(data_dir: Path, *args: str) -> subprocess.CompletedProcess[str]:
         text=True,
         env=env,
         timeout=120,
+        encoding="utf-8",
     )
 
 

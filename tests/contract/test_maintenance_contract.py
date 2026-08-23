@@ -43,6 +43,7 @@ def _run_maintenance(args: list[str], **kwargs: Any) -> subprocess.CompletedProc
         text=True,
         timeout=60,
         env=env,
+        encoding="utf-8",
         **kwargs,
     )
 
