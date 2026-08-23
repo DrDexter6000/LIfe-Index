@@ -194,6 +194,7 @@ def _run_coverage_gate(env: dict[str, str]) -> subprocess.CompletedProcess[str]:
         text=True,
         timeout=30,
         check=False,
+        encoding="utf-8",
     )
 
 
@@ -205,6 +206,7 @@ def _run_pre_push_env_check(env: dict[str, str]) -> subprocess.Popen[str]:
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
+        encoding="utf-8",
     )
 
 

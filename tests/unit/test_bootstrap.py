@@ -334,6 +334,7 @@ def _git(cwd: Path, *args: str) -> None:
         capture_output=True,
         text=True,
         timeout=30,
+        encoding="utf-8",
     )
 
 

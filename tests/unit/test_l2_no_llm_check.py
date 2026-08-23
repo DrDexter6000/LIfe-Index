@@ -74,6 +74,7 @@ def test_cli_exits_nonzero_for_violation_and_zero_for_clean(tmp_path: Path) -> N
         capture_output=True,
         text=True,
         check=False,
+        encoding="utf-8",
     )
     clean = subprocess.run(
         [sys.executable, str(SCRIPT_PATH), "--root", str(clean_root)],
@@ -81,6 +82,7 @@ def test_cli_exits_nonzero_for_violation_and_zero_for_clean(tmp_path: Path) -> N
         capture_output=True,
         text=True,
         check=False,
+        encoding="utf-8",
     )
 
     assert dirty.returncode == 1

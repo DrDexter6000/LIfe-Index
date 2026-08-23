@@ -222,6 +222,7 @@ class TestEntityProfilesStaleDetector:
             stderr=subprocess.PIPE,
             timeout=30,
             check=False,
+            encoding="utf-8",
         )
 
         assert proc.returncode == 0, proc.stderr

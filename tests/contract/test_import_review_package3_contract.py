@@ -50,6 +50,7 @@ def _run_import(data_dir: Path, *args: str) -> subprocess.CompletedProcess[str]:
         text=True,
         env=env,
         timeout=120,
+        encoding="utf-8",
     )
 
 
@@ -1725,6 +1726,7 @@ main()
             "--import-id", rebind_parent, "--source-root", str(src_rebind), "--json",
         ],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env,
+        encoding="utf-8",
     )
     run_proc = subprocess.Popen(
         [
@@ -1732,6 +1734,7 @@ main()
             "--import-id", run_parent, "--source-root", str(src_run), "--json",
         ],
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env,
+        encoding="utf-8",
     )
     rebind_out, rebind_err = rebind_proc.communicate(timeout=120)
     run_out, run_err = run_proc.communicate(timeout=120)

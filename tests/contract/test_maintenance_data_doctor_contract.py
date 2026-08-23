@@ -42,6 +42,7 @@ def _run_maintenance(args: list[str], data_dir: Path) -> subprocess.CompletedPro
         text=True,
         timeout=60,
         env=env,
+        encoding="utf-8",
     )
 
 

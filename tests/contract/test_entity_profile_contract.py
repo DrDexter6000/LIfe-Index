@@ -26,6 +26,7 @@ def _run_entity_profile(data_dir: Path, *args: str) -> dict:
         stderr=subprocess.PIPE,
         timeout=30,
         check=False,
+        encoding="utf-8",
     )
     assert proc.returncode == 0, proc.stderr
     return json.loads(proc.stdout)

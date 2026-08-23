@@ -80,6 +80,7 @@ def test_public_no_llm_hard_check_executes_full_search_ownership_scan(tmp_path: 
         capture_output=True,
         text=True,
         check=False,
+        encoding="utf-8",
     )
 
     assert proc.returncode == 1
@@ -149,6 +150,7 @@ def test_public_no_llm_hard_check_rejects_structural_search_ownership_bypasses(
         capture_output=True,
         text=True,
         check=False,
+        encoding="utf-8",
     )
 
     assert proc.returncode == 1
@@ -185,6 +187,7 @@ def test_public_no_llm_hard_check_rejects_provider_shaped_create_chains(
         capture_output=True,
         text=True,
         check=False,
+        encoding="utf-8",
     )
 
     assert proc.returncode == 1
@@ -222,6 +225,7 @@ def test_public_no_llm_hard_check_rejects_compound_provider_chain_owners(
         capture_output=True,
         text=True,
         check=False,
+        encoding="utf-8",
     )
 
     assert proc.returncode == 1
@@ -257,6 +261,7 @@ def test_public_no_llm_hard_check_allows_deterministic_create_chains(
         capture_output=True,
         text=True,
         check=False,
+        encoding="utf-8",
     )
 
     assert proc.returncode == 0, proc.stdout
@@ -286,6 +291,7 @@ def test_public_no_llm_hard_check_allows_unproven_generic_verbs(
         capture_output=True,
         text=True,
         check=False,
+        encoding="utf-8",
     )
 
     assert proc.returncode == 0, proc.stdout
@@ -314,6 +320,7 @@ def test_public_no_llm_hard_check_rejects_provider_suffixes_with_neutral_owners(
         capture_output=True,
         text=True,
         check=False,
+        encoding="utf-8",
     )
 
     assert proc.returncode == 1
@@ -349,6 +356,7 @@ def test_public_no_llm_hard_check_tracks_simple_provider_bindings(
         capture_output=True,
         text=True,
         check=False,
+        encoding="utf-8",
     )
 
     assert proc.returncode == 1
@@ -375,6 +383,7 @@ def test_public_no_llm_hard_check_allows_deterministic_query_planning_terms(
         capture_output=True,
         text=True,
         check=False,
+        encoding="utf-8",
     )
 
     assert proc.returncode == 0, proc.stdout
@@ -398,6 +407,7 @@ def test_public_no_llm_hard_check_allows_constant_safe_dynamic_import_keyword(
         capture_output=True,
         text=True,
         check=False,
+        encoding="utf-8",
     )
 
     assert proc.returncode == 0, proc.stdout
@@ -417,6 +427,7 @@ def test_public_no_llm_hard_check_treats_search_ast_parse_failure_as_non_green(
         capture_output=True,
         text=True,
         check=False,
+        encoding="utf-8",
     )
 
     assert proc.returncode != 0

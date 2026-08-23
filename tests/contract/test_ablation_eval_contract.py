@@ -29,6 +29,7 @@ def test_ablation_cli_runs() -> None:
         text=True,
         cwd=str(WORKTREE_ROOT),
         timeout=30,
+        encoding="utf-8",
     )
     assert result.returncode == 0, f"CLI --help failed: {result.stderr}"
     assert "usage" in result.stdout or "ablation" in result.stdout.lower()
@@ -58,6 +59,7 @@ def _run_ablation_json(data_dir: Path) -> dict[str, Any]:
         cwd=str(WORKTREE_ROOT),
         env=env,
         timeout=120,
+        encoding="utf-8",
     )
     assert result.returncode == 0, f"Ablation failed: {result.stderr}\nSTDOUT: {result.stdout}"
     return json.loads(result.stdout)

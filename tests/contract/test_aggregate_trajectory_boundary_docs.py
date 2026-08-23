@@ -17,6 +17,7 @@ def _run_tools(*args: str) -> subprocess.CompletedProcess:
         capture_output=True,
         text=True,
         timeout=30,
+        encoding="utf-8",
     )
 
 

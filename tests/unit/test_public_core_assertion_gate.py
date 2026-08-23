@@ -30,6 +30,7 @@ def _run_gate(tmp_path: Path, source: str) -> tuple[subprocess.CompletedProcess[
         text=True,
         check=False,
         timeout=60,
+        encoding="utf-8",
     )
     payload = json.loads(sentinel.read_text(encoding="utf-8")) if sentinel.exists() else {}
     return result, payload
@@ -115,6 +116,7 @@ def test_public_core_gate_rejects_missing_or_deselected_target(tmp_path: Path) -
         text=True,
         check=False,
         timeout=60,
+        encoding="utf-8",
     )
 
     assert result.returncode != 0

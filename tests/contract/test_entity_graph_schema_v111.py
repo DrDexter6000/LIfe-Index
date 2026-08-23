@@ -33,6 +33,7 @@ def _run_cli(args: list[str], data_dir: Path) -> dict:
         text=True,
         env=env,
         timeout=120,
+        encoding="utf-8",
     )
     try:
         payload = json.loads(proc.stdout)

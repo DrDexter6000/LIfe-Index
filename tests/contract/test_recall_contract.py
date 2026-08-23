@@ -114,6 +114,7 @@ def _run_recall_cli(
         text=True,
         env=env,
         timeout=60,
+        encoding="utf-8",
     )
 
 
@@ -133,6 +134,7 @@ class TestDefaultMode:
             text=True,
             env=env,
             timeout=60,
+            encoding="utf-8",
         )
 
         result = _run_recall_cli("default", "python", env=env)
@@ -170,6 +172,7 @@ class TestDefaultMode:
             text=True,
             env=env,
             timeout=60,
+            encoding="utf-8",
         )
 
         result = _run_recall_cli("default", "zzznonexistent", env=env)
@@ -207,6 +210,7 @@ class TestRecallMode:
             text=True,
             env=env,
             timeout=60,
+            encoding="utf-8",
         )
 
         result = _run_recall_cli("recall", "python", env=env)
@@ -249,6 +253,7 @@ class TestRecallMode:
             text=True,
             env=env,
             timeout=60,
+            encoding="utf-8",
         )
 
         result = _run_recall_cli("recall", "zzznonexistent", env=env)
@@ -286,6 +291,7 @@ class TestDeepMode:
             text=True,
             env=env,
             timeout=60,
+            encoding="utf-8",
         )
 
         result = _run_recall_cli("deep", "python", env=env)
@@ -315,6 +321,7 @@ class TestDeepMode:
             text=True,
             env=env,
             timeout=60,
+            encoding="utf-8",
         )
 
         result = _run_recall_cli("deep", "python", env=env)
@@ -344,6 +351,7 @@ class TestRecallInvariants:
             capture_output=True,
             text=True,
             timeout=60,
+            encoding="utf-8",
         )
 
         assert result.returncode == 0
@@ -360,6 +368,7 @@ class TestRecallInvariants:
             text=True,
             env=env,
             timeout=60,
+            encoding="utf-8",
         )
 
         result = _run_recall_cli("default", "python", env=env)
@@ -413,6 +422,7 @@ class TestRecallInvariants:
             text=True,
             env=env,
             timeout=60,
+            encoding="utf-8",
         )
 
         result = _run_recall_cli("default", "python", env=env)

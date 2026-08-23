@@ -40,6 +40,7 @@ def _run_import(data_dir: Path, *args: str) -> subprocess.CompletedProcess[str]:
         text=True,
         env=env,
         timeout=60,
+        encoding="utf-8",
     )
 
 
@@ -54,6 +55,7 @@ def _run_index(data_dir: Path) -> subprocess.CompletedProcess[str]:
         text=True,
         env=env,
         timeout=60,
+        encoding="utf-8",
     )
 
 

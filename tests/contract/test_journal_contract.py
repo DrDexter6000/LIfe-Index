@@ -22,6 +22,7 @@ def _run_journal(data_dir: Path, *args: str) -> subprocess.CompletedProcess[str]
         text=True,
         env=env,
         timeout=30,
+        encoding="utf-8",
     )
 
 
@@ -37,6 +38,7 @@ def _run_journal_with_env(
         text=True,
         env=env,
         timeout=30,
+        encoding="utf-8",
     )
 
 

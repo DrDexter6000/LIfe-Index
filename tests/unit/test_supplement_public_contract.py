@@ -51,6 +51,7 @@ class TestCLISupplementPolicyRejected:
             capture_output=True,
             text=True,
             cwd=REPO_ROOT,
+            encoding="utf-8",
         )
         assert result.returncode == 2, (
             f"Expected exit code 2 (argparse rejection), got {result.returncode}. "
@@ -72,6 +73,7 @@ class TestCLISupplementPolicyRejected:
             capture_output=True,
             text=True,
             cwd=REPO_ROOT,
+            encoding="utf-8",
         )
         # If stdout is non-empty it should not be valid JSON search output
         if result.stdout.strip():

@@ -21,6 +21,7 @@ def _run_attachment(data_dir: Path, *args: str) -> subprocess.CompletedProcess[s
         text=True,
         env=env,
         timeout=30,
+        encoding="utf-8",
     )
 
 

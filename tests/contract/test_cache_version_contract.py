@@ -133,6 +133,7 @@ def _run_index_dry_run(env):
         text=True,
         env=env,
         timeout=60,
+        encoding="utf-8",
     )
 
 
@@ -143,6 +144,7 @@ def _run_health_cache_audit(env):
         text=True,
         env=env,
         timeout=30,
+        encoding="utf-8",
     )
 
 

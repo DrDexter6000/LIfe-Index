@@ -24,6 +24,7 @@ def _run_abstract_entities(data_dir: Path, *args: str) -> list[dict]:
         stderr=subprocess.PIPE,
         timeout=30,
         check=False,
+        encoding="utf-8",
     )
     assert proc.returncode == 0, proc.stderr
     payload = json.loads(proc.stdout)

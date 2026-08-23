@@ -88,6 +88,7 @@ def test_built_wheel_contains_packaged_skill_artifacts(tmp_path: Path) -> None:
         capture_output=True,
         text=True,
         timeout=120,
+        encoding="utf-8",
     )
     assert result.returncode == 0, result.stderr
     wheel = next(tmp_path.glob("life_index-*.whl"))
