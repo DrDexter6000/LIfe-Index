@@ -28,10 +28,12 @@ BUILD_INPUT_FILES = (
 )
 
 # pip spawns an isolated build env on every invocation; under a fully loaded
-# gate machine that leg alone can exceed short timeouts, while the suite
-# grants this test 300s via pytest-timeout. Keep child budget aligned below
-# that ceiling so pytest-timeout remains the outer bound.
-WHEEL_BUILD_TIMEOUT_SECONDS = 240
+# gate machine that leg alone can exceed short timeouts. The binding constraint
+# is the required blocker CI gate's 120s per-test cap (pytest -m blocker
+# --timeout=120); the local coverage-gate script's 300s suite allowance is not
+# a merge-gate bound. Isolated snapshot builds measure ~7-20s, so this budget
+# stays well below the ceiling with ample margin.
+WHEEL_BUILD_TIMEOUT_SECONDS = 90
 
 
 def _root_manifest() -> dict[str, object]:
