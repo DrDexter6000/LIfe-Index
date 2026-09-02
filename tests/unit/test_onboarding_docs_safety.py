@@ -170,6 +170,31 @@ def test_onboarding_separates_program_host_and_data_lifecycles() -> None:
     assert "index --rebuild" in maintenance
 
 
+def test_existing_program_upgrade_starts_with_atomic_upgrade_not_bootstrap() -> None:
+    onboarding = " ".join(_read("AGENT_ONBOARDING.md").split())
+    skill = " ".join(_read("SKILL.md").split())
+    api = " ".join(_read("docs/API.md").split())
+
+    assert "Existing program upgrade starts with `life-index upgrade --plan --json`." in onboarding
+    assert "Do not use `bootstrap` as the program-upgrade command." in onboarding
+    assert (
+        "Bootstrap is for first-install and separately authorized data lifecycle planning."
+        in onboarding
+    )
+    assert "已有程序升级只运行 `life-index upgrade --plan --json`" in skill
+    assert "不得把 `bootstrap` 当作程序升级命令" in skill
+    assert "neutral temporary working directory" in api
+    assert "synthetic data directory" in api
+    assert "cleared `PYTHONPATH`" in api
+
+
+def test_skill_explains_packaged_authority_without_skill_leaf_guessing() -> None:
+    skill = " ".join(_read("SKILL.md").split())
+
+    assert "`life-index version` 返回安装包内嵌的 authority manifest" in skill
+    assert "不要在已安装 Skill 目录中猜找 `bootstrap-manifest.json`" in skill
+
+
 def test_onboarding_and_bootstrap_forbid_destructive_recovery_guidance() -> None:
     public_guidance = "\n".join(
         _read(path) for path in ("AGENT_ONBOARDING.md", "SKILL.md", "docs/API.md")

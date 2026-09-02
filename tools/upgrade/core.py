@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import distribution
@@ -69,7 +71,13 @@ class GitRunner(Protocol):
 
 
 class CommandRunner(Protocol):
-    def run(self, command: list[str], *, cwd: Path | None = None) -> CommandResult: ...
+    def run(
+        self,
+        command: list[str],
+        *,
+        cwd: Path | None = None,
+        env: dict[str, str] | None = None,
+    ) -> CommandResult: ...
 
 
 class PyPIReleaseProvider:
@@ -102,8 +110,21 @@ class PyPIReleaseProvider:
 
 
 class SubprocessCommandRunner:
-    def run(self, command: list[str], *, cwd: Path | None = None) -> CommandResult:
-        proc = subprocess.run(command, cwd=cwd, capture_output=True, text=True, timeout=120)
+    def run(
+        self,
+        command: list[str],
+        *,
+        cwd: Path | None = None,
+        env: dict[str, str] | None = None,
+    ) -> CommandResult:
+        proc = subprocess.run(
+            command,
+            cwd=cwd,
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
         return CommandResult(proc.returncode, proc.stdout, proc.stderr)
 
 
@@ -396,8 +417,14 @@ def _git_payload(
     }
 
 
-def _run_json_check(command_runner: CommandRunner, command: list[str]) -> dict[str, Any]:
-    result = command_runner.run(command)
+def _run_json_check(
+    command_runner: CommandRunner,
+    command: list[str],
+    *,
+    cwd: Path | None = None,
+    env: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    result = command_runner.run(command, cwd=cwd, env=env)
     parsed: Any = None
     parse_error: str | None = None
     if result.stdout:
@@ -412,6 +439,24 @@ def _run_json_check(command_runner: CommandRunner, command: list[str]) -> dict[s
         "parse_error": parse_error,
         "data": parsed,
     }
+
+
+def _health_upgrade_versions(health_status: dict[str, Any]) -> tuple[str | None, str | None]:
+    payload = health_status.get("data")
+    if not isinstance(payload, dict):
+        return None, None
+    data = payload.get("data")
+    if not isinstance(data, dict):
+        return None, None
+    freshness = data.get("upgrade_freshness")
+    if not isinstance(freshness, dict):
+        return None, None
+    installed = freshness.get("installed_version")
+    manifest = freshness.get("manifest_version")
+    return (
+        installed if isinstance(installed, str) else None,
+        manifest if isinstance(manifest, str) else None,
+    )
 
 
 def _display_command(command: list[str]) -> list[str]:
@@ -495,13 +540,24 @@ def build_upgrade_plan(
 
     actions: list[dict[str, Any]] = []
     git_payload = _git_payload(git_state, remote_probe)
-    health_status = _run_json_check(
-        command_runner, [sys.executable, "-m", "tools", "health", "--json"]
-    )
-    sync_skill_status = _run_json_check(
-        command_runner,
-        [sys.executable, "-m", "tools", "sync-skill", "--list", "--json"],
-    )
+    with tempfile.TemporaryDirectory(prefix="life-index-upgrade-probe-") as probe_root_raw:
+        probe_root = Path(probe_root_raw)
+        probe_env = os.environ.copy()
+        probe_env.pop("PYTHONPATH", None)
+        probe_env["LIFE_INDEX_VALIDATION_MODE"] = "1"
+        probe_env["LIFE_INDEX_DATA_DIR"] = str(probe_root / "data")
+        health_status = _run_json_check(
+            command_runner,
+            [sys.executable, "-m", "tools", "health", "--json"],
+            cwd=probe_root,
+            env=probe_env,
+        )
+        sync_skill_status = _run_json_check(
+            command_runner,
+            [sys.executable, "-m", "tools", "sync-skill", "--list", "--json"],
+            cwd=probe_root,
+            env=probe_env,
+        )
     reinstall_reasons: list[str] = []
 
     if git_state and git_state.dirty:
@@ -571,6 +627,17 @@ def build_upgrade_plan(
 
     if not health_status.get("json_parseable") or health_status.get("returncode") != 0:
         reinstall_reasons.append("The installed health command is not healthy and parseable.")
+
+    health_installed, health_manifest = _health_upgrade_versions(health_status)
+    if (
+        health_installed and context.package_version and health_installed != context.package_version
+    ) or (
+        health_manifest and context.manifest_version and health_manifest != context.manifest_version
+    ):
+        reinstall_reasons.append(
+            "The isolated health probe reports different installed version truth than "
+            "the upgrade process."
+        )
 
     if not _sync_skill_list_current(sync_skill_status):
         reinstall_reasons.append("The installed agent playbook is not current and canonical.")

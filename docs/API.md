@@ -4047,6 +4047,13 @@ release/yank status, optional checkout freshness plus a read-only remote probe,
 health JSON parseability, sync-skill discovery status, `actions[]`, and
 `recommended_next_step`.
 
+The health and skill-discovery probes run from a neutral temporary working directory
+with a synthetic data directory and cleared `PYTHONPATH`. They never inspect the
+configured user-data root merely to decide whether the program needs replacement.
+If isolated health reports version truth that disagrees with the upgrade process,
+the plan fails closed with `reinstall_managed_environment` instead of reporting a
+contradictory current/no-op result.
+
 `--apply` builds the same read-only plan. It never runs executable in-place
 `git pull`, `git fetch`, `pip install --upgrade`, `pip install -e`, or
 `sync-skill --install` operations.
@@ -7210,8 +7217,9 @@ life-index version
 - Formal releases require those two values to match
 - `life-index health` 会在 `data.upgrade_freshness` 暴露会话可见的本地
   freshness 信号（installed/manifest mismatch、checkout vs upstream ref）。
-- `life-index --version` 仍用于 authority/version 校验；`bootstrap --json`
-  仍是安装、升级、repair route 的权威状态机。
+- `life-index --version` 仍用于 authority/version 校验；已有程序升级使用
+  `life-index upgrade --plan --json`，`bootstrap --json` 只负责首次安装、repair
+  与单独授权的数据生命周期规划。
 - onboarding agent 不得用 `health` 替代 `bootstrap --json` / manifest
   freshness gate；health 信号只用于提醒宿主 agent 先刷新代码/playbook。
 

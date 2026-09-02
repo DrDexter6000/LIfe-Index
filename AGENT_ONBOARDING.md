@@ -1,13 +1,12 @@
 # Agent Onboarding Guide: Life Index
 
-> Purpose: install or clean-replace Life Index through `life-index bootstrap --json`
-> and only the structured plan it returns.
+> Purpose: upgrade through `life-index upgrade --plan --json`; first-install or clean-replace through `life-index bootstrap --json`.
 >
 > Authority: `CHARTER.md` owns invariants. `bootstrap-manifest.json` owns the
 > current required authority documents.
 
-This short document delegates local diagnosis and planning to `bootstrap`; the
-agent does not rebuild a parallel decision tree from prose.
+This short document delegates each lifecycle to its named CLI authority; the agent
+does not rebuild a parallel decision tree from prose.
 
 ## System Overview
 
@@ -35,11 +34,12 @@ checkouts, package metadata, and dependencies are disposable program state;
 replace them with a fresh dedicated install when required.
 Leave shared/global Python environments and existing developer- or user-owned checkouts untouched. Never uninstall from, repair, or delete them automatically.
 
-## 3. Bootstrap And Lifecycle Boundaries
+## 3. Upgrade, Bootstrap, And Lifecycle Boundaries
 
-Use `life-index bootstrap --json` when an installed command works. From an
-existing developer checkout, `python -m tools bootstrap --json` is also valid.
-If neither works, or `upgrade` reports `reinstall_managed_environment`, use 3A.
+Existing program upgrade starts with `life-index upgrade --plan --json`. Do not use
+`bootstrap` as the program-upgrade command. Bootstrap is for first-install and
+separately authorized data lifecycle planning. If `upgrade` reports
+`reinstall_managed_environment`, or no installed command works, use 3A.
 
 ### 3A. Program replacement validation
 
@@ -103,7 +103,7 @@ Use the exact commands above to inspect or reverse host delivery. Uninstall only
 
 ### 3C. Owner-authorized data maintenance
 
-Real-data `migrate`, `index`, `index --rebuild`, and similar maintenance require a separate owner-authorized data-maintenance plan. A bootstrap plan obtained against a real data root is a separate data-maintenance plan. Never execute it merely to accept program replacement. Bootstrap generation and `safe_next_steps` remain authoritative; this boundary does not rewrite them.
+Real-data `migrate`, `index`, `index --rebuild`, and similar maintenance require a separate owner-authorized data-maintenance plan. A bootstrap plan obtained against a real data root is a separate data-maintenance plan. Never execute it merely to accept program replacement. Bootstrap remains authoritative only inside that separately authorized lifecycle.
 
 For an existing checkout, pass `--checkout-path <path>` and, when known, `--checkout-origin host_managed` or `--checkout-origin user_designated`. Use `LIFE_INDEX_NO_NET=1` only when intentionally offline; `freshness: "unknown"` is then expected.
 
